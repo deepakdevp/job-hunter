@@ -1,0 +1,38 @@
+# Job Hunt Search Configuration
+# Copy this file to searches.yaml and customize
+
+# Job platforms to search
+# Western: linkedin, indeed, glassdoor, google, ziprecruiter
+# Japan: gaijinpot, jrec-in
+platforms:
+  - linkedin
+  - indeed
+  - glassdoor
+  - gaijinpot
+
+# Minimum AI fit score to include in pipeline (1-10)
+score_threshold: 7
+
+# Max results per query per platform
+results_per_query: 50
+
+# Only include jobs posted in the last N hours
+hours_old: 48
+
+# Search queries — each runs on all applicable platforms
+queries:
+  - search_term: "Senior Software Engineer Python"
+    location: "Remote"
+    country: "USA"
+
+  - search_term: "Backend Engineer FastAPI"
+    location: "San Francisco, CA"
+    country: "USA"
+
+  - search_term: "Software Engineer Python Tokyo"
+    location: "Tokyo, Japan"
+    country: "Japan"
+
+  - search_term: "Full Stack Developer"
+    location: "Remote"
+    country: "USA"

@@ -1,0 +1,66 @@
+{
+  "name": "Jane Smith",
+  "email": "jane.smith@example.com",
+  "phone": "+1 555-123-4567",
+  "location": "San Francisco, CA",
+  "linkedin": "https://linkedin.com/in/janesmith",
+  "github": "https://github.com/janesmith",
+  "website": "https://janesmith.dev",
+  "summary": "Full-stack software engineer with 5+ years of experience building scalable web applications. Passionate about Python, distributed systems, and developer tooling.",
+  "skills": [
+    "Python", "TypeScript", "React", "Node.js", "PostgreSQL", "Redis",
+    "AWS", "Docker", "Kubernetes", "FastAPI", "Django", "GraphQL",
+    "CI/CD", "Git", "Linux"
+  ],
+  "languages": ["English (native)", "Japanese (N2)", "Spanish (conversational)"],
+  "experience": [
+    {
+      "title": "Senior Software Engineer",
+      "company": "Acme Corp",
+      "location": "San Francisco, CA",
+      "start": "2021-03",
+      "end": "Present",
+      "bullets": [
+        "Led migration of monolithic Django app to microservices, reducing p99 latency by 40%",
+        "Built real-time analytics pipeline processing 500K events/day using Kafka and ClickHouse",
+        "Mentored 3 junior engineers, conducting weekly code reviews and technical design sessions",
+        "Shipped 15+ features end-to-end including payments integration (Stripe) and SSO (SAML)"
+      ]
+    },
+    {
+      "title": "Software Engineer",
+      "company": "Startup XYZ",
+      "location": "Remote",
+      "start": "2019-06",
+      "end": "2021-02",
+      "bullets": [
+        "Built customer-facing REST API in FastAPI serving 10K daily active users",
+        "Reduced infrastructure costs by 30% by optimizing PostgreSQL queries and adding Redis caching",
+        "Implemented CI/CD pipeline using GitHub Actions, cutting deploy time from 45 min to 8 min"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "B.S. Computer Science",
+      "school": "University of California, Berkeley",
+      "year": "2019",
+      "gpa": "3.8"
+    }
+  ],
+  "projects": [
+    {
+      "name": "open-source-tool",
+      "description": "CLI tool for X, used by 500+ developers",
+      "url": "https://github.com/janesmith/open-source-tool",
+      "tech": ["Python", "Click", "Rich"]
+    }
+  ],
+  "certifications": [
+    {
+      "name": "AWS Solutions Architect Associate",
+      "issuer": "Amazon Web Services",
+      "year": "2022"
+    }
+  ]
+}
