@@ -1,0 +1,4 @@
+searches:
+  - query: "software engineer"
+    location: "Tokyo"
+    boards: ["indeed"]

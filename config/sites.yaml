@@ -1,0 +1,44 @@
+# Site registry for Job Hunter
+# Blocked sites, SSO domains, and base URLs for enrichment
+
+manual_ats:
+  - "ibegin.tcsapps.com"
+
+blocked:
+  sites:
+    - "glassdoor"
+    - "google"
+    - "accenture"
+    - "AccentureCareers"
+    - "Workopolis"
+  url_patterns:
+    - "%glassdoor%"
+    - "%google.com/about/careers%"
+    - "%google.jobs%"
+    - "%accenture%"
+    - "%workopolis.com/out%"
+
+blocked_sso:
+  - "accounts.google.com"
+  - "login.microsoftonline.com"
+  - "okta.com"
+  - "auth0.com"
+  - "sso.cisco.com"
+
+base_urls:
+  "Japan Dev": "https://japan-dev.com"
+  "TokyoDev": "https://www.tokyodev.com"
+  "GaijinPot Jobs": "https://jobs.gaijinpot.com"
+  "Daijob": "https://www.daijob.com"
+  "CareerCross": "https://www.careercross.com"
+  "Yaaay": "https://yaaay.jp"
+  "Welcome to the Jungle": "https://www.welcometothejungle.com"
+  "EuroTechJobs": "https://www.eurotechjobs.com"
+  "The Hub": "https://thehub.io"
+  "Relocate.me": "https://relocate.me"
+  "Remote.com": "https://remote.com"
+  "Remotive": "https://remotive.com"
+  "Hiring Cafe": "https://hiring.cafe"
+  "StepStone": "https://www.stepstone.de"
+  "EURES": "https://europa.eu/eures"
+  "Totaljobs": "https://www.totaljobs.com"

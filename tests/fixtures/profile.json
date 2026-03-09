@@ -1,0 +1,15 @@
+{
+    "name": "Test User",
+    "email": "test@example.com",
+    "target_role": "Software Engineer",
+    "skills": ["Python", "TypeScript"],
+    "resume_facts": {
+        "companies": [
+            {"name": "Acme Corp", "title": "Senior Engineer", "dates": "2022-2025"}
+        ],
+        "education": [
+            {"school": "MIT", "degree": "BS Computer Science", "year": 2022}
+        ],
+        "metrics": ["Reduced API latency by 40%"]
+    }
+}

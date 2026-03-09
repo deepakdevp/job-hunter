@@ -1,0 +1,152 @@
+searches:
+  # ── Japan (highest priority) ──────────────────────────────────
+  - query: "software engineer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin", "glassdoor"]
+    max_results: 100
+    remote_only: false
+
+  - query: "full stack developer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 100
+
+  - query: "frontend engineer react"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "backend engineer python django"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "AI engineer"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "LLM engineer"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "agentic AI"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  # ── Europe ────────────────────────────────────────────────────
+  - query: "software engineer"
+    location: "Europe"
+    boards: ["indeed", "linkedin", "glassdoor"]
+    max_results: 100
+    remote_only: false
+
+  - query: "full stack developer"
+    location: "Germany"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "AI engineer"
+    location: "Europe"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "full stack engineer"
+    location: "Netherlands"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  # ── Remote / Global ──────────────────────────────────────────
+  - query: "software engineer remote"
+    location: "Remote"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+    remote_only: true
+
+  - query: "AI agent engineer remote"
+    location: "Remote"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+    remote_only: true
+
+# ── Custom job boards (scraped separately, not via JobSpy) ──────
+custom_boards:
+  japan:
+    - name: "Japan Dev"
+      url: "https://japan-dev.com"
+      type: "searchable"
+    - name: "TokyoDev"
+      url: "https://www.tokyodev.com/jobs"
+      type: "searchable"
+    - name: "GaijinPot Jobs"
+      url: "https://jobs.gaijinpot.com"
+      type: "searchable"
+    - name: "Daijob"
+      url: "https://www.daijob.com/en/"
+      type: "searchable"
+    - name: "CareerCross"
+      url: "https://www.careercross.com/en/job-search"
+      type: "searchable"
+    - name: "Yaaay"
+      url: "https://yaaay.jp"
+      type: "searchable"
+    - name: "HirePlanner"
+      url: "https://www.hireplanner.com"
+      type: "searchable"
+    - name: "Robert Walters Japan"
+      url: "https://www.robertwalters.co.jp/en/jobs.html"
+      type: "searchable"
+    - name: "Michael Page Japan"
+      url: "https://www.michaelpage.co.jp/en"
+      type: "searchable"
+    - name: "Jobs in Japan"
+      url: "https://jobsinjapan.com"
+      type: "searchable"
+    - name: "YOLO JAPAN"
+      url: "https://www.yolo-japan.com/en/"
+      type: "searchable"
+    - name: "WORK JAPAN"
+      url: "https://www.workjapan.jp"
+      type: "searchable"
+
+  europe:
+    - name: "Welcome to the Jungle"
+      url: "https://www.welcometothejungle.com"
+      type: "searchable"
+    - name: "EuroTechJobs"
+      url: "https://www.eurotechjobs.com"
+      type: "searchable"
+    - name: "The Hub"
+      url: "https://thehub.io"
+      type: "searchable"
+    - name: "Relocate.me"
+      url: "https://relocate.me"
+      type: "searchable"
+    - name: "StepStone"
+      url: "https://www.stepstone.de/en/"
+      type: "searchable"
+    - name: "EURES"
+      url: "https://europa.eu/eures/portal/jv-se/home"
+      type: "searchable"
+    - name: "Totaljobs"
+      url: "https://www.totaljobs.com"
+      type: "searchable"
+
+  global:
+    - name: "Remote.com"
+      url: "https://remote.com/jobs"
+      type: "searchable"
+    - name: "Remotive"
+      url: "https://remotive.com"
+      type: "searchable"
+    - name: "Hiring Cafe"
+      url: "https://hiring.cafe"
+      type: "searchable"
+    - name: "Notify"
+      url: "https://notify.careers"
+      type: "searchable"
+    - name: "Brian's Job Search"
+      url: "https://briansjobsearch.com"
+      type: "meta-search"
