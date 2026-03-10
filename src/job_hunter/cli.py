@@ -271,3 +271,106 @@ def score(ctx):
         f"[yellow]filtered {filtered}[/] "
         f"(out of {total} total)"
     )
+
+
+@cli.command()
+@click.option("--all", "tailor_all", is_flag=True, help="Tailor all untailored jobs above threshold")
+@click.option("--job-url", default=None, help="Tailor a specific job by URL")
+@click.option("--validation", type=click.Choice(["strict", "normal", "lenient"]), default="strict")
+@click.pass_context
+def tailor(ctx, tailor_all, job_url, validation):
+    """Generate tailored resumes for scored jobs."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.tailor.parser import parse_latex_resume
+    from job_hunter.tailor.tailor import tailor_resume as do_tailor
+    from job_hunter.tailor.renderer import render_latex_to_pdf
+    from job_hunter.tailor.validator import ValidationMode
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+    output_dir = ctx.obj["config_dir"] / "output"
+
+    mode = ValidationMode(validation)
+
+    # Load resume
+    resume_path = ctx.obj["config_dir"] / "config" / "resume.tex"
+    if not resume_path.exists():
+        resume_path = ctx.obj["config_dir"] / "resume.tex"
+    if not resume_path.exists():
+        console.print("[red]No resume.tex found in config/ or project root.[/]")
+        db.close()
+        return
+
+    resume_source = resume_path.read_text(encoding="utf-8")
+    resume = parse_latex_resume(resume_source)
+    profile = config.profile
+
+    # Get jobs to tailor
+    if job_url:
+        job = db.get_job(job_url)
+        if not job:
+            console.print(f"[red]Job not found: {job_url}[/]")
+            db.close()
+            return
+        jobs = [job]
+    elif tailor_all:
+        jobs = db.get_untailored_jobs(min_score=config.score_threshold)
+    else:
+        console.print("[yellow]Use --all or --job-url to specify which jobs to tailor.[/]")
+        db.close()
+        return
+
+    if not jobs:
+        console.print("[yellow]No jobs to tailor.[/]")
+        db.close()
+        return
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.gemini_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for tailoring but not available: {e}[/]")
+        db.close()
+        return
+
+    console.print(f"[bold]Tailoring {len(jobs)} resumes (mode: {validation})...[/]")
+
+    success = 0
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Tailoring", total=len(jobs))
+
+        for job in jobs:
+            tailored_latex = asyncio.run(
+                do_tailor(job, resume, profile, llm, mode=mode)
+            )
+
+            if tailored_latex:
+                pdf_path = render_latex_to_pdf(
+                    resume.preamble, tailored_latex, output_dir, job.url
+                )
+                if pdf_path:
+                    job.resume_path = str(pdf_path)
+                    job.status = "tailored"
+                    db.upsert_job(job)
+                    success += 1
+                else:
+                    console.print(f"  [yellow]PDF render failed for {job.title}[/]")
+            else:
+                console.print(f"  [yellow]Tailoring failed for {job.title}[/]")
+
+            progress.update(task, advance=1)
+
+    db.close()
+    console.print(f"\n[green bold]Tailored {success}/{len(jobs)} resumes[/]")

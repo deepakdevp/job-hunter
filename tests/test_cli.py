@@ -16,6 +16,7 @@ def test_cli_help():
     assert "discover" in result.output
     assert "enrich" in result.output
     assert "score" in result.output
+    assert "tailor" in result.output
     assert "doctor" in result.output
     assert "status" in result.output
 
