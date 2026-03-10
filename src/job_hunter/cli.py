@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from job_hunter import __version__
@@ -157,3 +158,59 @@ def discover(ctx, workers, skip_jobspy, skip_japan, skip_workday):
         f"\n[green bold]Discovered {len(new_jobs)} new jobs[/] "
         f"({len(all_jobs)} total found, {len(all_jobs) - len(new_jobs)} duplicates removed)"
     )
+
+
+@cli.command()
+@click.option("--limit", "-l", default=None, type=int, help="Max jobs to enrich")
+@click.option("--tier1-only", is_flag=True, help="Skip LLM tier (zero cost)")
+@click.pass_context
+def enrich(ctx, limit, tier1_only):
+    """Fetch full job descriptions using 3-tier cascade."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.enrich.runner import run_enrichment
+
+    config = load_config(ctx.obj["config_dir"])
+    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+
+    unenriched = db.get_unenriched_jobs()
+    count = min(len(unenriched), limit) if limit else len(unenriched)
+
+    if count == 0:
+        console.print("[yellow]No unenriched jobs found.[/]")
+        db.close()
+        return
+
+    llm = None
+    if not tier1_only:
+        from job_hunter.llm.base import get_provider
+        try:
+            llm = get_provider(
+                config.llm_provider,
+                api_key=config.gemini_api_key,
+                model=config.llm_model,
+            )
+        except Exception as e:
+            console.print(f"[yellow]LLM not available ({e}), using Tier 1-2 only[/]")
+
+    console.print(f"[bold]Enriching {count} jobs...[/]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Enriching", total=count)
+
+        def on_progress(done, total):
+            progress.update(task, completed=done)
+
+        enriched, total = asyncio.run(
+            run_enrichment(db, llm=llm, limit=limit, tier1_only=tier1_only, on_progress=on_progress)
+        )
+
+    db.close()
+    console.print(f"\n[green bold]Enriched {enriched}/{total} jobs[/]")

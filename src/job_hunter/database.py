@@ -26,6 +26,14 @@ class Job:
     enrich_tier: str | None = None
     tags: str | None = None
     notion_page_id: str | None = None
+    visa_sponsorship: bool | None = None
+    remote_policy: str | None = None
+    tech_stack: str | None = None
+    seniority: str | None = None
+    contract_type: str | None = None
+    team_size: str | None = None
+    benefits: str | None = None
+    enrichment_raw: bool | None = None
     resume_path: str | None = None
     cover_letter_path: str | None = None
 
@@ -58,6 +66,14 @@ class JobDB:
                 enrich_tier TEXT,
                 tags TEXT,
                 notion_page_id TEXT,
+                visa_sponsorship BOOLEAN,
+                remote_policy TEXT,
+                tech_stack TEXT,
+                seniority TEXT,
+                contract_type TEXT,
+                team_size TEXT,
+                benefits TEXT,
+                enrichment_raw BOOLEAN,
                 resume_path TEXT,
                 cover_letter_path TEXT
             )
