@@ -15,6 +15,7 @@ def test_cli_help():
     assert result.exit_code == 0
     assert "discover" in result.output
     assert "enrich" in result.output
+    assert "score" in result.output
     assert "doctor" in result.output
     assert "status" in result.output
 

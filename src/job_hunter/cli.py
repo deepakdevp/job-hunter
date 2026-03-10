@@ -214,3 +214,60 @@ def enrich(ctx, limit, tier1_only):
 
     db.close()
     console.print(f"\n[green bold]Enriched {enriched}/{total} jobs[/]")
+
+
+@cli.command()
+@click.pass_context
+def score(ctx):
+    """Score jobs using pre-filter + multi-criteria LLM scoring."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.score.scorer import run_scoring
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+
+    unscored = db.get_unscored_jobs()
+    if not unscored:
+        console.print("[yellow]No unscored jobs found.[/]")
+        db.close()
+        return
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.gemini_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for scoring but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+    console.print(f"[bold]Scoring {len(unscored)} jobs (pre-filter + LLM)...[/]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Scoring", total=len(unscored))
+
+        def on_progress(done, total):
+            progress.update(task, completed=done)
+
+        scored, filtered, total = asyncio.run(
+            run_scoring(db, profile, llm, on_progress=on_progress)
+        )
+
+    db.close()
+    console.print(
+        f"\n[green bold]Scored {scored} jobs[/], "
+        f"[yellow]filtered {filtered}[/] "
+        f"(out of {total} total)"
+    )
