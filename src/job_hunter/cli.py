@@ -285,6 +285,8 @@ def tailor(ctx, tailor_all, job_url, validation):
     from job_hunter.tailor.parser import parse_latex_resume
     from job_hunter.tailor.tailor import tailor_resume as do_tailor
     from job_hunter.tailor.renderer import render_latex_to_pdf
+    from job_hunter.tailor.cover_letter import generate_cover_letter
+    from job_hunter.tailor.cover_letter_renderer import render_cover_letter
     from job_hunter.tailor.validator import ValidationMode
     from job_hunter.llm.base import get_provider
 
@@ -362,11 +364,24 @@ def tailor(ctx, tailor_all, job_url, validation):
                 )
                 if pdf_path:
                     job.resume_path = str(pdf_path)
-                    job.status = "tailored"
-                    db.upsert_job(job)
-                    success += 1
                 else:
-                    console.print(f"  [yellow]PDF render failed for {job.title}[/]")
+                    console.print(f"  [yellow]Resume PDF render failed for {job.title}[/]")
+
+                # Generate cover letter
+                cl_text = asyncio.run(
+                    generate_cover_letter(job, profile, llm, mode=mode)
+                )
+                if cl_text:
+                    cl_pdf, cl_txt = render_cover_letter(
+                        cl_text, profile, job.title, job.company, output_dir, job.url
+                    )
+                    job.cover_letter_path = str(cl_txt) if cl_txt else None
+                else:
+                    console.print(f"  [yellow]Cover letter failed for {job.title}[/]")
+
+                job.status = "tailored"
+                db.upsert_job(job)
+                success += 1
             else:
                 console.print(f"  [yellow]Tailoring failed for {job.title}[/]")
 
