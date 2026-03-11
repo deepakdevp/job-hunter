@@ -389,3 +389,110 @@ def tailor(ctx, tailor_all, job_url, validation):
 
     db.close()
     console.print(f"\n[green bold]Tailored {success}/{len(jobs)} resumes[/]")
+
+
+@cli.group()
+def sync():
+    """Notion sync commands."""
+    pass
+
+
+@sync.command("init")
+@click.option("--page-id", required=True, help="Notion parent page ID")
+@click.pass_context
+def sync_init(ctx, page_id):
+    """Initialize Notion database under a parent page."""
+    import os
+    from job_hunter.notion.client import NotionJobDB
+
+    token = os.environ.get("NOTION_TOKEN")
+    if not token:
+        console.print("[red]NOTION_TOKEN not set in environment.[/]")
+        raise SystemExit(1)
+
+    notion = NotionJobDB(token=token)
+    db_id = notion.init_database(page_id)
+    console.print(f"[green]Notion database ready: {db_id}[/]")
+    console.print(f"Add to .env: NOTION_DATABASE_ID={db_id}")
+
+
+@sync.command("push")
+@click.option("--drive-creds", type=click.Path(exists=True), default=None, help="Google service account JSON")
+@click.pass_context
+def sync_push(ctx, drive_creds):
+    """Push jobs to Notion (and optionally upload PDFs to Drive)."""
+    import os
+    from job_hunter.database import JobDB
+    from job_hunter.notion.client import NotionJobDB
+    from job_hunter.notion.drive_uploader import DriveUploader
+    from job_hunter.notion.sync import push_jobs_to_notion
+
+    token = os.environ.get("NOTION_TOKEN")
+    db_id = os.environ.get("NOTION_DATABASE_ID")
+    if not token or not db_id:
+        console.print("[red]Set NOTION_TOKEN and NOTION_DATABASE_ID in .env[/]")
+        raise SystemExit(1)
+
+    config_dir = ctx.obj["config_dir"]
+    db = JobDB(config_dir / "jobs.db")
+    notion = NotionJobDB(token=token, database_id=db_id)
+
+    drive = None
+    if drive_creds:
+        drive = DriveUploader(credentials_path=drive_creds)
+
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+        BarColumn(), TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(), console=console,
+    ) as progress:
+        task = None
+
+        def on_progress(done, total):
+            nonlocal task
+            if task is None:
+                task = progress.add_task("Pushing", total=total)
+            progress.update(task, completed=done)
+
+        created, updated = push_jobs_to_notion(db, notion, drive, on_progress)
+
+    db.close()
+    console.print(f"\n[green bold]Pushed to Notion: {created} created, {updated} updated[/]")
+
+
+@sync.command("pull")
+@click.pass_context
+def sync_pull(ctx):
+    """Pull status changes from Notion back to local DB."""
+    import os
+    from job_hunter.database import JobDB
+    from job_hunter.notion.client import NotionJobDB
+    from job_hunter.notion.sync import pull_status_from_notion
+
+    token = os.environ.get("NOTION_TOKEN")
+    db_id = os.environ.get("NOTION_DATABASE_ID")
+    if not token or not db_id:
+        console.print("[red]Set NOTION_TOKEN and NOTION_DATABASE_ID in .env[/]")
+        raise SystemExit(1)
+
+    config_dir = ctx.obj["config_dir"]
+    db = JobDB(config_dir / "jobs.db")
+    notion = NotionJobDB(token=token, database_id=db_id)
+
+    with Progress(
+        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
+        BarColumn(), TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(), console=console,
+    ) as progress:
+        task = None
+
+        def on_progress(done, total):
+            nonlocal task
+            if task is None:
+                task = progress.add_task("Pulling", total=total)
+            progress.update(task, completed=done)
+
+        updated = pull_status_from_notion(db, notion, on_progress)
+
+    db.close()
+    console.print(f"\n[green bold]Pulled from Notion: {updated} status updates[/]")
