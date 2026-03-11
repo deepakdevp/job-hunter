@@ -496,3 +496,130 @@ def sync_pull(ctx):
 
     db.close()
     console.print(f"\n[green bold]Pulled from Notion: {updated} status updates[/]")
+
+
+@cli.command("apply")
+@click.option("--job-url", default=None, help="Apply to a single job by URL")
+@click.option("--all", "apply_all", is_flag=True, help="Apply to all eligible jobs")
+@click.option("--limit", default=None, type=int, help="Max applications in batch mode")
+@click.option("--login", "login_domain", default=None, help="Open browser to save login session for a domain")
+@click.option("--dry-run", is_flag=True, help="Fill forms without submitting")
+@click.pass_context
+def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
+    """Apply to jobs using browser automation."""
+    import json as _json
+    import os
+    import time
+
+    from job_hunter.apply.applicant import Applicant
+    from job_hunter.apply.strategies.base import detect_platform
+
+    config_dir = ctx.obj["config_dir"]
+    profile_path = config_dir / "profile.json"
+    if not profile_path.exists():
+        console.print("[red]profile.json not found[/]")
+        raise SystemExit(1)
+
+    profile = _json.loads(profile_path.read_text())
+
+    llm = None
+    try:
+        from job_hunter.config import load_config
+        from job_hunter.llm.base import get_provider
+        config = load_config(config_dir)
+        llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+    except Exception:
+        pass
+
+    applicant = Applicant(
+        profile=profile,
+        session_dir=config_dir / "sessions",
+        llm=llm,
+        log_path=config_dir / "output" / "apply_log.json",
+        dry_run=dry_run,
+    )
+
+    # Login mode
+    if login_domain:
+        console.print(f"[bold]Opening browser for {login_domain} — log in then close the window[/]")
+        asyncio.run(applicant.login_and_save(login_domain))
+        console.print(f"[green]Session saved for {login_domain}[/]")
+        return
+
+    from job_hunter.database import JobDB
+
+    db = JobDB(config_dir / "jobs.db")
+
+    # Single job mode
+    if job_url:
+        job = db.get_job(job_url)
+        if not job:
+            console.print(f"[red]Job not found: {job_url}[/]")
+            db.close()
+            raise SystemExit(1)
+
+        console.print(f"[bold]Applying: {job.title} @ {job.company}[/]")
+        result = asyncio.run(applicant.apply_to_job(job))
+        applicant._log_result(result)
+
+        if result.status == "applied":
+            job.status = "applied"
+            db.upsert_job(job)
+            console.print("[green bold]Applied successfully[/]")
+        elif result.status == "dry_run":
+            console.print("[yellow]Dry run — form filled but not submitted[/]")
+        else:
+            job.status = "apply_failed"
+            db.upsert_job(job)
+            console.print(f"[red]Failed: {result.error}[/]")
+
+        db.close()
+        return
+
+    # Batch mode
+    if not apply_all:
+        console.print("[yellow]Use --job-url or --all[/]")
+        db.close()
+        return
+
+    jobs = []
+    for s in ("tailored", "synced"):
+        jobs.extend(db.get_jobs_by_status(s))
+    jobs = [j for j in jobs if applicant.is_eligible(j)]
+
+    if limit:
+        jobs = jobs[:limit]
+
+    if not jobs:
+        console.print("[yellow]No eligible jobs to apply to[/]")
+        db.close()
+        return
+
+    console.print(f"[bold]Applying to {len(jobs)} jobs{' (dry run)' if dry_run else ''}[/]\n")
+
+    applied = 0
+    for i, job in enumerate(jobs, 1):
+        platform = detect_platform(job.apply_url or job.url)
+        console.print(f"[bold][{i}/{len(jobs)}] {job.title} @ {job.company}[/]")
+        console.print(f"      Platform: {platform}")
+
+        result = asyncio.run(applicant.apply_to_job(job))
+        applicant._log_result(result)
+
+        if result.status == "applied":
+            job.status = "applied"
+            db.upsert_job(job)
+            applied += 1
+            console.print("      [green]Applied[/]")
+        elif result.status == "dry_run":
+            console.print("      [yellow]Dry run[/]")
+        else:
+            job.status = "apply_failed"
+            db.upsert_job(job)
+            console.print(f"      [red]Failed: {result.error}[/]")
+
+        if i < len(jobs):
+            time.sleep(2)
+
+    db.close()
+    console.print(f"\n[green bold]Done: {applied}/{len(jobs)} applied[/]")
