@@ -4,8 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-
-import tldextract
+from urllib.parse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -51,5 +50,8 @@ class SessionManager:
             >>> SessionManager.domain_from_url("https://company.myworkdayjobs.com/en/jobs/1")
             'myworkdayjobs.com'
         """
-        ext = tldextract.extract(url)
-        return f"{ext.domain}.{ext.suffix}"
+        hostname = urlparse(url).hostname or ""
+        parts = hostname.split(".")
+        if len(parts) >= 2:
+            return ".".join(parts[-2:])
+        return hostname
