@@ -11,3 +11,7 @@ output/
 sessions/
 .ruff_cache/
 *.pdf
+
+# Personal data — never commit real profile or credentials
+config/profile.json
+docs/research/deepak-profile-master.md

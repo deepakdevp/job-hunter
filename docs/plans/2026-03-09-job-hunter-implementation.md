@@ -172,7 +172,7 @@ def sample_profile(fixtures_dir):
 
 **Step 6: Install in dev mode and verify CLI works**
 
-Run: `cd /Users/deepak.panwar/projects/job-hunter && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]" && hunt --version`
+Run: `cd <project-root> && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]" && hunt --version`
 Expected: `job-hunter, version 0.1.0`
 
 **Step 7: Run tests (should pass with 0 collected)**
