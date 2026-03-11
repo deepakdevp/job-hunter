@@ -623,3 +623,40 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
 
     db.close()
     console.print(f"\n[green bold]Done: {applied}/{len(jobs)} applied[/]")
+
+
+@cli.command("run")
+@click.option("--apply", "run_apply", is_flag=True, help="Include auto-apply stage")
+@click.option("--skip-discover", is_flag=True, help="Skip discover stage")
+@click.option("--dry-run", is_flag=True, help="Dry-run apply (no submit)")
+@click.pass_context
+def run_cmd(ctx, run_apply, skip_discover, dry_run):
+    """Run the full pipeline: discover -> enrich -> score -> tailor -> sync."""
+    from job_hunter.pipeline import run_pipeline
+
+    config_dir = ctx.obj["config_dir"]
+
+    console.print("[bold]Starting pipeline run...[/]\n")
+
+    summary = run_pipeline(
+        config_dir,
+        skip_discover=skip_discover,
+        run_apply=run_apply,
+        dry_run=dry_run,
+    )
+
+    table = Table(title="Run Summary")
+    table.add_column("Stage", style="cyan")
+    table.add_column("Result")
+
+    for stage in summary.stages:
+        if stage.success:
+            table.add_row(stage.name, f"[green]{stage.detail}[/]")
+        else:
+            table.add_row(stage.name, f"[red]FAILED: {stage.error}[/]")
+
+    if not run_apply:
+        table.add_row("Apply", "[dim]skipped (use --apply)[/]")
+
+    console.print()
+    console.print(table)
