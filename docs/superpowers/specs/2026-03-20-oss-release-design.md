@@ -6,6 +6,7 @@
 **Target audience:** Developers/engineers who can run CLI tools + contributors who want to add scrapers/strategies.
 **Timeline:** 2 weeks. Launch as v0.1.0.
 **Approach:** Solid Launch — security cleanup + repo essentials + key architecture fixes in one batch.
+**Codebase:** 86 Python files (57 source + 29 test), ~11.4K LOC total.
 
 ---
 
@@ -33,6 +34,7 @@ Use `git filter-repo` to purge from all commits:
 - `config/sessions/`
 - `config/.japan_notion_db_id`
 - `config/deep_research_results.tsv`
+- `config/deep_research_program.md`
 
 **Files to keep (sanitized):**
 - `config/profile.json.example` — template with fake "Jane Doe" data
@@ -45,6 +47,7 @@ Use `git filter-repo` to purge from all commits:
 1. Rotate Gemini API key and Notion token immediately
 2. Force-push rewritten history
 3. Add `detect-secrets` pre-commit hook to block future leaks
+4. Run `detect-secrets scan > .secrets.baseline` and commit baseline
 
 ### Updated .gitignore
 
@@ -58,6 +61,7 @@ config/output/
 config/japan_output/
 config/sessions/
 config/deep_research_results.tsv
+config/deep_research_program.md
 config/.japan_notion_db_id
 
 # Python
@@ -91,7 +95,7 @@ Structure:
 4. **Pipeline architecture:** ASCII diagram showing discover → enrich → score → tailor → sync → apply
 5. **Configuration:** Brief overview, link to docs
 6. **Supported job boards:** Table (Indeed, LinkedIn, TokyoDev, JapanDev, GaijinPot, Workday 20+ employers)
-7. **Supported LLM providers:** Table (Gemini, OpenAI, Ollama)
+7. **Supported LLM providers:** Table (Gemini, OpenAI, Claude, Ollama)
 8. **Contributing:** Link to CONTRIBUTING.md
 9. **License:** MIT
 
@@ -160,26 +164,29 @@ Generates `profile.json`, `.env`, and default `searches.yaml`. Removes the "copy
 
 ### Docker
 
-```dockerfile
-FROM python:3.12-slim
-RUN apt-get update && apt-get install -y texlive-latex-base
-RUN pip install job-hunter[jobspy]
-ENTRYPOINT ["hunt"]
+**Deferred to v0.2.** Docker for a tool needing texlive, Playwright browsers, and Ollama is a support burden. The incomplete container would generate issues from users expecting end-to-end functionality. Ship Docker when we can test it properly.
+
+For v0.1, document "install from pip" and "install from source" paths only.
+
+### Optional Dependencies
+
+Restructure `pyproject.toml` so users only install what they need:
+
+```toml
+[project.optional-dependencies]
+jobspy = ["python-jobspy>=1.1"]
+claude = ["anthropic>=0.30"]
+openai = ["openai>=1.0"]
+notion = ["notion-client>=2.0"]
+pdf = ["weasyprint>=62"]
+apply = ["playwright>=1.40"]
+all = ["job-hunter[jobspy,claude,openai,notion,pdf,apply]"]
 ```
 
-```yaml
-# docker-compose.yml
-services:
-  job-hunter:
-    build: .
-    volumes:
-      - ./config:/config
-    environment:
-      - LLM_PROVIDER=ollama
-      - OLLAMA_HOST=http://host.docker.internal:11434
-```
+Core install (`pip install job-hunter`) gives: discover + score + export. No heavy system deps needed.
+Full install (`pip install job-hunter[all]`) gives everything.
 
-One-command tryout: `docker compose run job-hunter init`
+Remove the unused `crawlee` optional dependency — it is dead code.
 
 ### System Dependencies Documentation
 
@@ -187,6 +194,14 @@ Clear install instructions for optional deps:
 - texlive (LaTeX resumes — optional, HTML fallback available)
 - `playwright install` (for JS-rendered job pages)
 - Ollama (for local LLM)
+- Cairo/Pango (for weasyprint HTML→PDF — only if not using LaTeX)
+
+### SECURITY.md
+
+Add a `SECURITY.md` with:
+- Vulnerability reporting instructions (email, not public issues)
+- Note that job-hunter handles API keys, browser sessions, and personal data
+- Guidance on keeping `.env` and `profile.json` out of version control
 
 ---
 
@@ -195,20 +210,32 @@ Clear install instructions for optional deps:
 ### 4a. LLM Provider Expansion
 
 Existing abstraction is clean: `llm/base.py` → `LLMProvider` ABC with `generate()`.
+Three providers already exist: `gemini.py`, `claude.py`, and the factory in `base.py`.
+
+**Existing bug to fix first:** The `Config` dataclass has `gemini_api_key` as the only API key field, and all call sites in `cli.py` and `pipeline.py` pass `config.gemini_api_key` regardless of provider. This means `LLM_PROVIDER=claude` would pass the Gemini key to Claude.
+
+**Refactor (prerequisite, ~half day):**
+1. Replace `Config.gemini_api_key` with generic `Config.llm_api_key` (resolved from `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` based on `LLM_PROVIDER`)
+2. Update all 12+ call sites in `cli.py` and `pipeline.py`
+3. Add `anthropic` as optional dependency in `pyproject.toml` (`[claude]` extra)
 
 **Add two new providers:**
 - `llm/openai.py` — using `openai` SDK. Supports GPT-4o, GPT-4o-mini.
 - `llm/ollama.py` — using `httpx` to hit `localhost:11434/api/generate`. No SDK dependency. Supports any pulled model.
 
-**Update `get_provider()` factory** to support `"openai"` and `"ollama"`.
+**Update `get_provider()` factory** to support `"openai"` and `"ollama"` (alongside existing `"gemini"` and `"claude"`).
 
 **Config via env vars:**
 ```
 LLM_PROVIDER=ollama
 LLM_MODEL=llama3.1
-OPENAI_API_KEY=sk-...
-OLLAMA_HOST=http://localhost:11434
+GEMINI_API_KEY=...         # for gemini
+OPENAI_API_KEY=sk-...      # for openai
+ANTHROPIC_API_KEY=sk-ant-... # for claude
+OLLAMA_HOST=http://localhost:11434  # for ollama
 ```
+
+**README LLM table:** Gemini, OpenAI, Claude, Ollama (local).
 
 ### 4b. CSV/JSON Export
 
@@ -228,16 +255,25 @@ Current: LLM generates LaTeX → `pdflatex` renders PDF.
 New flow:
 1. LLM generates resume content (same as today)
 2. If `pdflatex` available → LaTeX path (best quality)
-3. If not → Jinja2 HTML template + weasyprint → PDF (both already in deps)
+3. If not → Jinja2 HTML template + weasyprint → PDF (weasyprint is an optional `[pdf]` dep)
 
-Add `config/resume_template.html` as the fallback template. `hunt doctor` checks which renderer is available.
+**Work involved (budget full day):**
+- Design `config/resume_template.html` — professional Jinja2 template with print-media CSS
+- Add parallel render path in `tailor/renderer.py` (HTML branch alongside LaTeX)
+- `hunt doctor` reports which renderer is available
+- If neither pdflatex nor weasyprint: generate Markdown resume as last-resort fallback
 
 ### 4d. Refactor run_japan.py
 
-- Extract reusable logic into `hunt run` CLI command (most exists in `pipeline.py`)
-- Move `run_japan.py` → `examples/japan_pipeline.py` with explanatory comments
-- Add `examples/README.md` explaining how to build a custom regional pipeline
-- `hunt run` reads from user's config dir, no hardcoded paths
+`run_japan.py` is 684 lines with significant autoresearch functionality (source research, data validation, score audit, resume audit, deep research loop) that does not exist in the current `hunt run` / `pipeline.py`.
+
+**Scope decision:** Autoresearch is included in v0.1 — it's a key differentiator. The refactor:
+
+1. Move autoresearch stage orchestration from `run_japan.py` into `pipeline.py` (the core stages: source research, data validation, score audit, resume audit)
+2. Deep research (`--deep-research`, `--deep-research-loop`) becomes a `hunt research` CLI command
+3. Move `run_japan.py` → `examples/japan_pipeline.py` with explanatory comments showing how to compose a custom regional pipeline (this script remains functional as a standalone runner)
+4. Add `examples/README.md` explaining the example
+5. `hunt run` reads from user's config dir, no hardcoded paths
 
 ### 4e. Config Location (XDG)
 
@@ -304,27 +340,32 @@ docs/
 
 ---
 
-## 7. Two-Week Execution Plan
+## 7. Prerequisites
+
+Before starting the 2-week clock:
+- **Verify Phase 6 (Notion sync) completion.** The CLI has sync commands wired up and `notion/sync.py` + `notion/client.py` exist. Confirm `hunt sync push` and `hunt sync pull` work end-to-end, or explicitly mark Notion sync as "beta" in docs.
+
+## 8. Two-Week Execution Plan
 
 ### Week 1: Clean & Essential
 
 | Day | Work |
 |-----|------|
-| 1 | `git filter-repo` to purge secrets/PII/DBs/PDFs. Rotate API keys. Fix `.gitignore`. Add `detect-secrets` pre-commit hook. |
-| 2 | LICENSE (MIT), README.md, CONTRIBUTING.md, CLAUDE.md, CHANGELOG.md. Update `pyproject.toml` metadata. |
-| 3 | XDG config paths. `hunt init` setup wizard. Sanitize `config/resume.tex` to "Jane Doe" example. |
-| 4 | Refactor `run_japan.py` → `examples/japan_pipeline.py`. Ensure `hunt run` works from config dir. Pin deps, generate lock file. |
-| 5 | GitHub Actions CI (lint + test, Python 3.11/3.12/3.13). Run full test suite, fix failures. |
+| 1 | `git filter-repo` to purge secrets/PII/DBs/PDFs from history. Rotate all API keys. Fix `.gitignore`. Add `detect-secrets` pre-commit hook + scan baseline. |
+| 2 | LICENSE (MIT), README.md, CONTRIBUTING.md, CLAUDE.md, CHANGELOG.md, SECURITY.md. Update `pyproject.toml` metadata. Restructure optional deps (`[jobspy]`, `[claude]`, `[openai]`, `[notion]`, `[pdf]`, `[apply]`, `[all]`). Remove dead `crawlee` extra. |
+| 3 | XDG config paths: refactor `config.py` default paths, update all `config_dir` / DB path references (~15 call sites in `cli.py`, `pipeline.py`). Sanitize `config/resume.tex` to "Jane Doe" example. |
+| 4 | `hunt init` setup wizard: interactive CLI creating `profile.json`, `.env`, default `searches.yaml` in XDG config dir. |
+| 5 | Refactor `run_japan.py` → `examples/japan_pipeline.py`. Move autoresearch stages into `pipeline.py`. Add `hunt research` CLI command for deep research. Pin deps, generate lock file. |
 
 ### Week 2: Features & Docs
 
 | Day | Work |
 |-----|------|
-| 6 | `llm/openai.py` + `llm/ollama.py`. Update `get_provider()`. Test with real calls. |
-| 7 | `hunt export` (CSV/JSON). HTML→PDF resume fallback with Jinja2 + weasyprint. |
-| 8 | Dockerfile + docker-compose.yml. Test full flow in container. `hunt doctor` enhancements. |
-| 9 | All documentation: getting-started, configuration, architecture, llm-providers, adding-job-boards, adding-ats-strategies, faq. |
-| 10 | Final polish: test clean install flow (`pip install` → `hunt init` → full pipeline). Tag v0.1.0. Push public. |
+| 6 | LLM refactor: replace `Config.gemini_api_key` with provider-aware key resolution. Update all 12+ call sites. Add `anthropic` as `[claude]` optional dep. |
+| 7 | `llm/openai.py` + `llm/ollama.py`. Update `get_provider()` factory. Test with real calls. |
+| 8 | `hunt export` (CSV/JSON). HTML→PDF resume fallback: Jinja2 template + weasyprint + print CSS. Markdown last-resort fallback. `hunt doctor` enhancements. |
+| 9 | GitHub Actions CI (lint + test, Python 3.11/3.12/3.13). Run full test suite, fix failures. |
+| 10 | All documentation: getting-started, configuration, architecture, llm-providers, adding-job-boards, adding-ats-strategies, autoresearch, faq. Final polish: test clean install flow. Tag v0.1.0. Push public. |
 
 ### Explicitly NOT in Scope
 
@@ -334,4 +375,5 @@ docs/
 - Additional resume templates (ship 1 LaTeX + 1 HTML)
 - New job board scrapers
 - mypy type checking
+- Docker (deferred to v0.2)
 - PyPI publishing (install from GitHub for v0.1, PyPI for v0.2)
