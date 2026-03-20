@@ -18,6 +18,18 @@ def get_config_dir(override: Path | None = None) -> Path:
     return base / "job-hunter"
 
 
+def resolve_llm_api_key(provider: str) -> str:
+    """Resolve API key based on LLM provider."""
+    key_map = {
+        "gemini": "GEMINI_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "claude": "ANTHROPIC_API_KEY",
+        "ollama": "",
+    }
+    env_var = key_map.get(provider, "")
+    return os.environ.get(env_var, "") if env_var else ""
+
+
 def get_data_dir(override: Path | None = None) -> Path:
     """Resolve data directory: explicit override > XDG > ~/.local/share/job-hunter."""
     if override:
@@ -45,6 +57,11 @@ class Config:
     sites_config: dict = field(default_factory=dict)
     config_dir: Path = field(default_factory=get_config_dir)
     data_dir: Path = field(default_factory=get_data_dir)
+
+    @property
+    def llm_api_key(self) -> str:
+        """Resolve API key based on the configured LLM provider."""
+        return resolve_llm_api_key(self.llm_provider)
 
 
 def load_config(config_dir: Path | None = None, data_dir: Path | None = None) -> Config:

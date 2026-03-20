@@ -36,6 +36,14 @@ def cli(ctx, verbose, config_dir, data_dir):
     ctx.obj["verbose"] = verbose
 
 
+@cli.command("init")
+def init_cmd():
+    """Interactive setup wizard — create profile, .env, and searches."""
+    from job_hunter.init_wizard import interactive_init
+
+    interactive_init()
+
+
 @cli.command()
 @click.pass_context
 def doctor(ctx):
@@ -193,7 +201,7 @@ def enrich(ctx, limit, tier1_only):
         try:
             llm = get_provider(
                 config.llm_provider,
-                api_key=config.gemini_api_key,
+                api_key=config.llm_api_key,
                 model=config.llm_model,
             )
         except Exception as e:
@@ -243,7 +251,7 @@ def score(ctx):
     try:
         llm = get_provider(
             config.llm_provider,
-            api_key=config.gemini_api_key,
+            api_key=config.llm_api_key,
             model=config.llm_model,
         )
     except Exception as e:
@@ -339,7 +347,7 @@ def tailor(ctx, tailor_all, job_url, validation):
     try:
         llm = get_provider(
             config.llm_provider,
-            api_key=config.gemini_api_key,
+            api_key=config.llm_api_key,
             model=config.llm_model,
         )
     except Exception as e:
@@ -534,7 +542,7 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
         from job_hunter.config import load_config
         from job_hunter.llm.base import get_provider
         config = load_config(config_dir)
-        llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+        llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
     except Exception:
         pass
 

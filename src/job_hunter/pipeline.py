@@ -80,10 +80,10 @@ def _run_enrich(config_dir: Path, data_dir: Path) -> StageResult:
     db = JobDB(data_dir / "jobs.db")
 
     llm = None
-    if config.gemini_api_key:
+    if config.llm_api_key or config.llm_provider == "ollama":
         try:
             from job_hunter.llm.base import get_provider
-            llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+            llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
         except Exception:
             pass
 
@@ -103,7 +103,7 @@ def _run_score(config_dir: Path, data_dir: Path) -> StageResult:
     config = load_config(config_dir, data_dir)
     db = JobDB(data_dir / "jobs.db")
 
-    llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+    llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
     profile = config.profile
     target_roles = profile.get("target_roles", [profile.get("target_role", "")])
 
@@ -128,7 +128,7 @@ def _run_tailor(config_dir: Path, data_dir: Path) -> StageResult:
     db = JobDB(data_dir / "jobs.db")
     profile = config.profile
 
-    llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+    llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
 
     resume_path = config_dir / "resume.tex"
     if not resume_path.exists():
@@ -197,10 +197,10 @@ def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> Stage
     profile = json.loads(profile_path.read_text())
 
     llm = None
-    if config.gemini_api_key:
+    if config.llm_api_key or config.llm_provider == "ollama":
         try:
             from job_hunter.llm.base import get_provider
-            llm = get_provider(config.llm_provider, api_key=config.gemini_api_key, model=config.llm_model)
+            llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
         except Exception:
             pass
 

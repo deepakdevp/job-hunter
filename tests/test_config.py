@@ -111,3 +111,12 @@ def test_default_config_dir_falls_back_to_home(monkeypatch):
 def test_default_data_dir_falls_back_to_home(monkeypatch):
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     assert get_data_dir() == Path.home() / ".local" / "share" / "job-hunter"
+
+
+def test_llm_api_key_resolves_from_provider(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-test")
+    from job_hunter.config import resolve_llm_api_key
+    assert resolve_llm_api_key("openai") == "sk-test"
+    assert resolve_llm_api_key("gemini") == "gemini-test"
+    assert resolve_llm_api_key("ollama") == ""
