@@ -679,3 +679,154 @@ def run_cmd(ctx, run_apply, skip_discover, dry_run):
 
     console.print()
     console.print(table)
+
+
+@cli.group()
+def research():
+    """Deep autoresearch on scored jobs."""
+    pass
+
+
+@research.command("run")
+@click.option("--min-score", default=5, type=int, help="Minimum job score to research")
+@click.option("--max-jobs", default=50, type=int, help="Maximum jobs to research")
+@click.pass_context
+def research_run(ctx, min_score, max_jobs):
+    """Single-pass deep research on high-value jobs."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.autoresearch.deep_research import run_deep_research
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.gemini_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for deep research but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+
+    console.print(
+        f"[bold]Deep research: min_score={min_score}, max_jobs={max_jobs}[/]"
+    )
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        prog_task = None
+
+        def on_progress(done, total):
+            nonlocal prog_task
+            if prog_task is None:
+                prog_task = progress.add_task("Deep research", total=total)
+            progress.update(prog_task, completed=done)
+
+        results = asyncio.run(run_deep_research(
+            db,
+            profile,
+            llm,
+            min_score=min_score,
+            max_jobs=max_jobs,
+            on_progress=on_progress,
+        ))
+
+    db.close()
+
+    console.print(
+        f"\n[green bold]Deep Research: {results['total_researched']} jobs researched, "
+        f"{results['scores_changed']} scores changed, "
+        f"{results['resumes_flagged']} resumes flagged, "
+        f"{results['total_time_seconds']:.0f}s total[/]"
+    )
+
+
+@research.command("loop")
+@click.option("--min-score", default=5, type=int, help="Minimum job score to research")
+@click.option("--max-jobs", default=50, type=int, help="Maximum jobs per iteration")
+@click.pass_context
+def research_loop(ctx, min_score, max_jobs):
+    """Never-stop loop -- re-researches low confidence until Ctrl+C."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.autoresearch.deep_research import run_deep_research_loop
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.gemini_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for deep research but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+
+    console.print(
+        f"[bold]Deep research loop: min_score={min_score}, max_jobs={max_jobs}[/]"
+    )
+    console.print("[dim]Runs until Ctrl+C. Re-researches LOW confidence jobs each iteration.[/]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        prog_task = None
+
+        def on_progress(done, total):
+            nonlocal prog_task
+            if prog_task is None:
+                prog_task = progress.add_task("Deep research", total=total)
+            progress.update(prog_task, completed=done)
+
+        def on_iteration_complete(iteration, iter_results):
+            console.print(
+                f"\n[bold cyan]Iteration {iteration} complete: "
+                f"{iter_results['total_researched']} researched, "
+                f"kept={iter_results.get('kept', 0)}, "
+                f"discarded={iter_results.get('discarded', 0)}[/]"
+            )
+
+        results = asyncio.run(run_deep_research_loop(
+            db,
+            profile,
+            llm,
+            min_score=min_score,
+            max_jobs=max_jobs,
+            on_progress=on_progress,
+            on_iteration_complete=on_iteration_complete,
+        ))
+
+    db.close()
+
+    console.print(
+        f"\n[green bold]Deep Research Loop: {results.get('iterations', 0)} iterations, "
+        f"{results['total_researched']} total researched, "
+        f"kept={results.get('total_kept', 0)}, "
+        f"discarded={results.get('total_discarded', 0)}, "
+        f"{results['total_time_seconds']:.0f}s total[/]"
+    )

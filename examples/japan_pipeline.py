@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Japan-focused job hunting pipeline with autoresearch.
+"""Japan-focused job hunting pipeline example.
 
-Full pipeline:
-  source-research → discover → data-validate → enrich → score → score-audit →
-  tailor → resume-audit → sync
+This standalone script demonstrates how to compose a custom regional pipeline
+using job-hunter's building blocks. It includes:
+- JobSpy searches for Japan (Indeed, LinkedIn)
+- Japan-specific board scrapers (TokyoDev, JapanDev, GaijinPot)
+- Workday employer scraping for Japan offices
+- Autoresearch stages (source validation, score audit, resume audit)
+- Deep research with Karpathy-style iterative loops
+- Notion sync
 
-Usage:
-    python run_japan.py [--skip-discover] [--skip-enrich] [--skip-score]
-                        [--skip-tailor] [--skip-sync] [--skip-autoresearch]
-                        [--score-threshold N]
+To use: copy this file, modify the searches/employers configs for your
+target region, and run directly with `python examples/japan_pipeline.py`.
 """
 from __future__ import annotations
 
