@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from job_hunter.enrich.fetcher import fetch_page, _is_js_heavy
 
 
@@ -22,8 +22,12 @@ async def test_fetch_page_static():
 
 @pytest.mark.asyncio
 async def test_fetch_page_js_heavy_triggers_playwright():
-    with patch("job_hunter.enrich.fetcher._fetch_static", new_callable=AsyncMock) as mock_static, \
-         patch("job_hunter.enrich.fetcher._fetch_with_playwright", new_callable=AsyncMock) as mock_pw:
+    with (
+        patch("job_hunter.enrich.fetcher._fetch_static", new_callable=AsyncMock) as mock_static,
+        patch(
+            "job_hunter.enrich.fetcher._fetch_with_playwright", new_callable=AsyncMock
+        ) as mock_pw,
+    ):
         # Static returns short content for JS-heavy domain
         mock_static.return_value = "<html><body>Loading...</body></html>"
         mock_pw.return_value = "<html><body>" + "Full content " * 500 + "</body></html>"

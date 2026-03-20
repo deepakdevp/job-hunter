@@ -1,4 +1,5 @@
 """Applicant orchestrator — drives the full browser-based apply flow."""
+
 from __future__ import annotations
 
 import json

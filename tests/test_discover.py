@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from job_hunter.discover.jobspy_scraper import parse_jobspy_results
 from job_hunter.discover.dedup import dedup_jobs
@@ -84,7 +83,9 @@ def test_dedup_removes_existing_urls():
 def test_dedup_removes_duplicates_within_batch():
     jobs = [
         Job(url="https://example.com/1", title="A", company="X", location="Y", source="indeed"),
-        Job(url="https://example.com/1", title="A dup", company="X", location="Y", source="linkedin"),
+        Job(
+            url="https://example.com/1", title="A dup", company="X", location="Y", source="linkedin"
+        ),
         Job(url="https://example.com/2", title="B", company="X", location="Y", source="indeed"),
     ]
     deduped = dedup_jobs(jobs, set())

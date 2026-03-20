@@ -86,7 +86,8 @@ def _compile_latex(compiler: str, tex_path: Path, work_dir: str) -> bool:
         cmd = [
             compiler,
             "-interaction=nonstopmode",
-            "-output-directory", work_dir,
+            "-output-directory",
+            work_dir,
             str(tex_path),
         ]
 

@@ -50,7 +50,9 @@ def _strip_latex(text: str) -> str:
     # Remove \command{} but keep content
     text = re.sub(r"\\(?:textbf|textit|emph|underline|href)\{([^}]*)\}", r"\1", text)
     # Remove \command without braces
-    text = re.sub(r"\\(?:item|vspace|hfill|smallskip|medskip|bigskip|noindent|newline|\\)\s*", " ", text)
+    text = re.sub(
+        r"\\(?:item|vspace|hfill|smallskip|medskip|bigskip|noindent|newline|\\)\s*", " ", text
+    )
     # Remove remaining \commands with optional args
     text = re.sub(r"\\[a-zA-Z]+(?:\[[^\]]*\])?(?:\{[^}]*\})*", "", text)
     # Remove braces
@@ -66,7 +68,9 @@ def parse_latex_resume(latex_source: str) -> ParsedResume:
     resume = ParsedResume(full_text=latex_source)
 
     # Extract preamble (before \begin{document})
-    doc_match = re.search(r"(.*?)\\begin\{document\}(.*?)\\end\{document\}", latex_source, re.DOTALL)
+    doc_match = re.search(
+        r"(.*?)\\begin\{document\}(.*?)\\end\{document\}", latex_source, re.DOTALL
+    )
     if doc_match:
         resume.preamble = doc_match.group(1).strip()
         body = doc_match.group(2).strip()
@@ -91,11 +95,13 @@ def parse_latex_resume(latex_source: str) -> ParsedResume:
 
     if not matches:
         # Last resort — treat entire body as one section
-        resume.sections.append(ResumeSection(
-            name="Content",
-            raw_latex=body,
-            items=_extract_items(body),
-        ))
+        resume.sections.append(
+            ResumeSection(
+                name="Content",
+                raw_latex=body,
+                items=_extract_items(body),
+            )
+        )
         return resume
 
     # Extract header (content before first section)
@@ -111,11 +117,13 @@ def parse_latex_resume(latex_source: str) -> ParsedResume:
 
         items = _extract_items(section_content)
 
-        resume.sections.append(ResumeSection(
-            name=section_name,
-            raw_latex=section_content,
-            items=items,
-        ))
+        resume.sections.append(
+            ResumeSection(
+                name=section_name,
+                raw_latex=section_content,
+                items=items,
+            )
+        )
 
     return resume
 
@@ -139,9 +147,7 @@ def _extract_items(latex: str) -> list[str]:
             items.append(clean)
 
     # Also try \resumeItemListStart ... \resumeItemListEnd blocks
-    list_blocks = re.findall(
-        r"\\resumeItemListStart(.*?)\\resumeItemListEnd", latex, re.DOTALL
-    )
+    list_blocks = re.findall(r"\\resumeItemListStart(.*?)\\resumeItemListEnd", latex, re.DOTALL)
     for block in list_blocks:
         block_items = re.findall(r"\\resumeItem\{((?:[^{}]|\{[^{}]*\})*)\}", block)
         for item in block_items:

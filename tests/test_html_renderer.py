@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
@@ -11,10 +10,13 @@ from job_hunter.tailor.html_renderer import (
 
 class TestRenderHtmlResume:
     def test_basic_render(self):
-        html = render_html_resume("Alice", [
-            {"heading": "Experience", "bullets": ["Built APIs", "Led team"]},
-            {"heading": "Education", "text": "MIT, BS CS 2022"},
-        ])
+        html = render_html_resume(
+            "Alice",
+            [
+                {"heading": "Experience", "bullets": ["Built APIs", "Led team"]},
+                {"heading": "Education", "text": "MIT, BS CS 2022"},
+            ],
+        )
         assert "<h1>Alice</h1>" in html
         assert "Experience" in html
         assert "Built APIs" in html
@@ -35,7 +37,6 @@ class TestRenderHtmlToPdf:
         """When weasyprint is not importable, returns None."""
         with patch.dict("sys.modules", {"weasyprint": None}):
             # Force re-import failure
-            import importlib
             with patch("builtins.__import__", side_effect=_make_import_blocker("weasyprint")):
                 result = render_html_to_pdf("<html></html>", tmp_path, "https://x.com/1")
                 assert result is None
@@ -54,6 +55,7 @@ class TestRenderHtmlToPdf:
 
     def test_output_filename_uses_hash(self, tmp_path):
         import hashlib
+
         url = "https://example.com/job/42"
         expected_hash = hashlib.md5(url.encode()).hexdigest()[:12]
 
@@ -81,7 +83,7 @@ class TestRenderToPdf:
         # and calls render_html_to_pdf under the hood
         with patch("job_hunter.tailor.html_renderer.render_html_to_pdf") as mock_pdf:
             mock_pdf.return_value = tmp_path / "test.pdf"
-            result = render_to_pdf("", latex_body, tmp_path, "https://x.com/1")
+            render_to_pdf("", latex_body, tmp_path, "https://x.com/1")
             assert mock_pdf.called
             # Verify HTML was passed (first arg to render_html_to_pdf)
             html_arg = mock_pdf.call_args[0][0]
@@ -132,6 +134,7 @@ class TestRendererFallback:
 
 
 # ---- helpers ----
+
 
 def _make_import_blocker(blocked_module: str):
     """Create a side_effect for __import__ that blocks a specific module."""

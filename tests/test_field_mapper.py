@@ -1,9 +1,11 @@
 """Tests for LLM-powered field mapper."""
+
 from __future__ import annotations
 import json
 from unittest.mock import AsyncMock
 import pytest
-from job_hunter.apply.field_mapper import FieldMapper, FieldSuggestion, CONFIDENCE_THRESHOLD
+from job_hunter.apply.field_mapper import FieldMapper, FieldSuggestion
+
 
 @pytest.fixture
 def sample_profile():
@@ -17,9 +19,11 @@ def sample_profile():
         },
     }
 
+
 @pytest.fixture
 def mock_llm():
     return AsyncMock()
+
 
 @pytest.mark.asyncio
 async def test_map_high_confidence(mock_llm, sample_profile):
@@ -30,6 +34,7 @@ async def test_map_high_confidence(mock_llm, sample_profile):
     assert result.confidence >= 0.9
     assert result.needs_human is False
 
+
 @pytest.mark.asyncio
 async def test_map_low_confidence(mock_llm, sample_profile):
     mock_llm.generate.return_value = json.dumps({"answer": "Maybe", "confidence": 0.3})
@@ -37,6 +42,7 @@ async def test_map_low_confidence(mock_llm, sample_profile):
     result = await mapper.suggest("What is your expected salary?")
     assert result.confidence < 0.5
     assert result.needs_human is True
+
 
 @pytest.mark.asyncio
 async def test_map_llm_error(mock_llm, sample_profile):
@@ -46,11 +52,13 @@ async def test_map_llm_error(mock_llm, sample_profile):
     assert result.answer == ""
     assert result.needs_human is True
 
+
 def test_field_suggestion_needs_human_threshold():
     high = FieldSuggestion(answer="Yes", confidence=0.9)
     assert high.needs_human is False
     low = FieldSuggestion(answer="Maybe", confidence=0.4)
     assert low.needs_human is True
+
 
 @pytest.mark.asyncio
 async def test_prompt_includes_profile_context(mock_llm, sample_profile):

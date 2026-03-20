@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -48,6 +47,7 @@ def sample_jobs():
 
 # --- Push sync ---
 
+
 def test_push_creates_new_pages(mock_db, mock_notion, sample_jobs):
     # Only return the first job (no notion_page_id) for "scored" status
     def get_by_status(status):
@@ -82,9 +82,7 @@ def test_push_updates_existing_pages(mock_db, mock_notion, sample_jobs):
 
     assert created == 0
     assert updated == 1
-    mock_notion.update_page.assert_called_once_with(
-        "existing-page-id", sample_jobs[1], None, None
-    )
+    mock_notion.update_page.assert_called_once_with("existing-page-id", sample_jobs[1], None, None)
 
 
 def test_push_with_drive_upload(mock_db, mock_notion, tmp_path):
@@ -121,9 +119,7 @@ def test_push_with_drive_upload(mock_db, mock_notion, tmp_path):
     assert created == 1
     drive.upload_resume.assert_called_once()
     drive.upload_cover_letter.assert_called_once()
-    mock_notion.create_page.assert_called_once_with(
-        job, "https://drive/resume", "https://drive/cl"
-    )
+    mock_notion.create_page.assert_called_once_with(job, "https://drive/resume", "https://drive/cl")
 
 
 def test_push_preserves_applied_status(mock_db, mock_notion):
@@ -188,6 +184,7 @@ def test_push_progress_callback(mock_db, mock_notion, sample_jobs):
 
 
 # --- Pull sync ---
+
 
 def test_pull_updates_local_status(mock_db, mock_notion):
     mock_notion.get_all_pages.return_value = [

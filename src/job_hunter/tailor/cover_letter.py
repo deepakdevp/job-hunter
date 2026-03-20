@@ -4,7 +4,12 @@ import logging
 import re
 
 from job_hunter.database import Job
-from job_hunter.tailor.validator import validate_resume, ValidationMode, ValidationResult, ValidationIssue
+from job_hunter.tailor.validator import (
+    validate_resume,
+    ValidationMode,
+    ValidationResult,
+    ValidationIssue,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,19 +74,27 @@ def validate_cover_letter(
     word_count = len(text.split())
     word_limit = WORD_LIMITS.get(mode)
     if word_limit and word_count > word_limit:
-        extra_issues.append(ValidationIssue(
-            severity="error" if mode == ValidationMode.STRICT else "warning",
-            category="structure",
-            message=f"Cover letter too long: {word_count} words (max {word_limit})",
-        ))
+        extra_issues.append(
+            ValidationIssue(
+                severity="error" if mode == ValidationMode.STRICT else "warning",
+                category="structure",
+                message=f"Cover letter too long: {word_count} words (max {word_limit})",
+            )
+        )
 
     # Must mention company (skip for unknown companies)
-    if company_name and company_name.lower() not in ("unknown", "") and company_name.lower() not in text.lower():
-        extra_issues.append(ValidationIssue(
-            severity="error",
-            category="structure",
-            message=f"Cover letter doesn't mention the company: '{company_name}'",
-        ))
+    if (
+        company_name
+        and company_name.lower() not in ("unknown", "")
+        and company_name.lower() not in text.lower()
+    ):
+        extra_issues.append(
+            ValidationIssue(
+                severity="error",
+                category="structure",
+                message=f"Cover letter doesn't mention the company: '{company_name}'",
+            )
+        )
 
     # Check for overly formal openings
     formal_openers = [
@@ -95,11 +108,13 @@ def validate_cover_letter(
     text_lower = text.lower()
     for opener in formal_openers:
         if opener.lower() in text_lower:
-            extra_issues.append(ValidationIssue(
-                severity="error" if mode == ValidationMode.STRICT else "warning",
-                category="structure",
-                message=f"Overly formal opener detected: '{opener}'",
-            ))
+            extra_issues.append(
+                ValidationIssue(
+                    severity="error" if mode == ValidationMode.STRICT else "warning",
+                    category="structure",
+                    message=f"Overly formal opener detected: '{opener}'",
+                )
+            )
 
     all_issues = result.issues + extra_issues
     errors = [i for i in all_issues if i.severity == "error"]
@@ -175,7 +190,7 @@ async def generate_cover_letter(
             if attempt < MAX_RETRIES:
                 prompt = (
                     prompt
-                    + f"\n\n## VALIDATION ERRORS (fix these):\n"
+                    + "\n\n## VALIDATION ERRORS (fix these):\n"
                     + "\n".join(f"- {m}" for m in error_msgs)
                     + "\n\nRewrite the cover letter fixing ALL the above issues."
                 )
@@ -193,5 +208,10 @@ def _clean_response(response: str) -> str:
     response = re.sub(r"```\s*$", "", response)
     # Remove any "Dear..." or "Sincerely..." the LLM might add
     response = re.sub(r"^Dear\s+.*?,?\s*\n+", "", response, flags=re.IGNORECASE)
-    response = re.sub(r"\n+(?:Sincerely|Best regards|Kind regards|Regards|Yours truly),?\s*\n.*$", "", response, flags=re.IGNORECASE | re.DOTALL)
+    response = re.sub(
+        r"\n+(?:Sincerely|Best regards|Kind regards|Regards|Yours truly),?\s*\n.*$",
+        "",
+        response,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     return response.strip()

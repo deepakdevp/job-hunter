@@ -12,14 +12,45 @@ def db(tmp_path):
     database = JobDB(tmp_path / "test.db")
     # Seed some jobs with different statuses and scores
     jobs = [
-        Job(url="https://a.com/1", title="SWE", company="Acme", location="Tokyo",
-            source="indeed", status="scored", score=8, visa_sponsorship=True),
-        Job(url="https://a.com/2", title="PM", company="Beta", location="SF",
-            source="linkedin", status="new", score=3, visa_sponsorship=False),
-        Job(url="https://a.com/3", title="DevOps", company="Gamma", location="London",
-            source="indeed", status="tailored", score=6, visa_sponsorship=None),
-        Job(url="https://a.com/4", title="Designer", company="Delta", location="Remote",
-            source="glassdoor", status="rejected", score=2),  # rejected — not exported
+        Job(
+            url="https://a.com/1",
+            title="SWE",
+            company="Acme",
+            location="Tokyo",
+            source="indeed",
+            status="scored",
+            score=8,
+            visa_sponsorship=True,
+        ),
+        Job(
+            url="https://a.com/2",
+            title="PM",
+            company="Beta",
+            location="SF",
+            source="linkedin",
+            status="new",
+            score=3,
+            visa_sponsorship=False,
+        ),
+        Job(
+            url="https://a.com/3",
+            title="DevOps",
+            company="Gamma",
+            location="London",
+            source="indeed",
+            status="tailored",
+            score=6,
+            visa_sponsorship=None,
+        ),
+        Job(
+            url="https://a.com/4",
+            title="Designer",
+            company="Delta",
+            location="Remote",
+            source="glassdoor",
+            status="rejected",
+            score=2,
+        ),  # rejected — not exported
     ]
     for j in jobs:
         database.upsert_job(j)
@@ -51,7 +82,13 @@ def test_export_csv_fieldnames(db, tmp_path):
     with open(out) as f:
         reader = csv.DictReader(f)
         assert reader.fieldnames == [
-            "title", "company", "location", "score", "url", "status", "visa_sponsorship"
+            "title",
+            "company",
+            "location",
+            "score",
+            "url",
+            "status",
+            "visa_sponsorship",
         ]
 
 

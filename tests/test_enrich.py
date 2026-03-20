@@ -7,14 +7,14 @@ from job_hunter.enrich.detail import (
     extract_with_llm,
     extract_raw_text,
     parse_structured_fields,
-    EnrichResult,
 )
 
 
 # --- Tier 1: JSON-LD ---
 
+
 def test_extract_from_json_ld():
-    html = '''
+    html = """
     <html><head>
     <script type="application/ld+json">
     {"@type": "JobPosting", "title": "Senior Python Developer",
@@ -22,7 +22,7 @@ def test_extract_from_json_ld():
      "url": "https://example.com/apply", "directApply": true}
     </script>
     </head><body></body></html>
-    '''
+    """
     result = extract_from_json_ld(html)
     assert result is not None
     assert "Python developer" in result.description
@@ -33,14 +33,14 @@ def test_extract_from_json_ld():
 
 
 def test_extract_from_json_ld_graph():
-    html = '''
+    html = """
     <html><head>
     <script type="application/ld+json">
     {"@graph": [{"@type": "Organization"}, {"@type": "JobPosting",
      "description": "React engineer needed. On-site in Tokyo."}]}
     </script>
     </head><body></body></html>
-    '''
+    """
     result = extract_from_json_ld(html)
     assert result is not None
     assert "React engineer" in result.description
@@ -48,20 +48,20 @@ def test_extract_from_json_ld_graph():
 
 
 def test_extract_from_json_ld_returns_none_for_no_job():
-    html = '<html><head></head><body>No jobs here</body></html>'
+    html = "<html><head></head><body>No jobs here</body></html>"
     result = extract_from_json_ld(html)
     assert result is None
 
 
 def test_extract_from_json_ld_no_visa():
-    html = '''
+    html = """
     <html><head>
     <script type="application/ld+json">
     {"@type": "JobPosting",
      "description": "<p>Software engineer role. Cannot sponsor visa. Must be authorized to work.</p>"}
     </script>
     </head><body></body></html>
-    '''
+    """
     result = extract_from_json_ld(html)
     assert result is not None
     assert result.visa_sponsorship is False
@@ -69,8 +69,9 @@ def test_extract_from_json_ld_no_visa():
 
 # --- Tier 2: CSS Selectors ---
 
+
 def test_extract_description_css():
-    html = '''
+    html = """
     <html><body>
     <h1>Senior Backend Engineer</h1>
     <div id="job-description">
@@ -79,7 +80,7 @@ def test_extract_description_css():
         This is a full-time hybrid role. Team of 8 engineers.</p>
     </div>
     </body></html>
-    '''
+    """
     result = extract_description_css(html)
     assert result is not None
     assert "senior engineer" in result.description
@@ -92,14 +93,14 @@ def test_extract_description_css():
 
 
 def test_extract_description_css_fallback_selectors():
-    html = '''
+    html = """
     <html><body>
     <div class="job-description">
         <p>Machine learning engineer role. Experience with PyTorch and TensorFlow required.
         We offer health insurance, equity, and flexible hours. Junior to mid level.</p>
     </div>
     </body></html>
-    '''
+    """
     result = extract_description_css(html)
     assert result is not None
     assert "Machine learning" in result.description
@@ -109,7 +110,7 @@ def test_extract_description_css_fallback_selectors():
 
 
 def test_extract_description_css_with_apply_link():
-    html = '''
+    html = """
     <html><body>
     <div id="job-description">
         <p>Great role for a developer with React and TypeScript skills.
@@ -117,7 +118,7 @@ def test_extract_description_css_with_apply_link():
     </div>
     <a href="https://apply.example.com/job/123">Apply Now</a>
     </body></html>
-    '''
+    """
     result = extract_description_css(html)
     assert result is not None
     assert result.apply_url == "https://apply.example.com/job/123"
@@ -132,8 +133,9 @@ def test_extract_description_css_returns_none_for_short_content():
 
 # --- Raw text fallback ---
 
+
 def test_extract_raw_text():
-    html = '''
+    html = """
     <html>
     <head><style>body{color:red}</style></head>
     <body>
@@ -144,7 +146,7 @@ def test_extract_raw_text():
     Benefits include health insurance and paid time off.</p>
     <footer>Footer content</footer>
     </body></html>
-    '''
+    """
     result = extract_raw_text(html)
     assert result.enrichment_raw is True
     assert result.tier == "raw"
@@ -158,10 +160,9 @@ def test_extract_raw_text():
 
 # --- Structured field parsing ---
 
+
 def test_parse_structured_fields_tech_stack():
-    fields = parse_structured_fields(
-        "We use Python, React, PostgreSQL, and Docker in our stack."
-    )
+    fields = parse_structured_fields("We use Python, React, PostgreSQL, and Docker in our stack.")
     assert "Python" in fields["tech_stack"]
     assert "React" in fields["tech_stack"]
     assert "PostgreSQL" in fields["tech_stack"]
@@ -169,34 +170,30 @@ def test_parse_structured_fields_tech_stack():
 
 
 def test_parse_structured_fields_no_duplicates():
-    fields = parse_structured_fields(
-        "Python Python Python React React"
-    )
+    fields = parse_structured_fields("Python Python Python React React")
     python_count = sum(1 for t in fields["tech_stack"] if t.lower() == "python")
     assert python_count == 1
 
 
 def test_parse_structured_fields_seniority_from_title():
     fields = parse_structured_fields(
-        "Some description without seniority keywords.",
-        title="Lead Software Engineer"
+        "Some description without seniority keywords.", title="Lead Software Engineer"
     )
     assert fields["seniority"] == "lead"
 
 
 def test_parse_structured_fields_team_size():
-    fields = parse_structured_fields(
-        "Join our team of 12 engineers building the next big thing."
-    )
+    fields = parse_structured_fields("Join our team of 12 engineers building the next big thing.")
     assert fields["team_size"] is not None
     assert "12" in fields["team_size"]
 
 
 # --- Tier 3: LLM extraction ---
 
+
 @pytest.mark.asyncio
 async def test_extract_with_llm():
-    html = '''
+    html = """
     <html><body>
     <nav>Navigation</nav>
     <p>We are hiring a Senior Python Engineer. Must know Django, PostgreSQL, Docker.
@@ -204,19 +201,21 @@ async def test_extract_with_llm():
     Benefits: health insurance, equity, PTO.</p>
     <footer>Footer</footer>
     </body></html>
-    '''
+    """
     mock_llm = AsyncMock()
-    mock_llm.generate.return_value = json.dumps({
-        "full_description": "We are hiring a Senior Python Engineer. Must know Django, PostgreSQL, Docker. Full-time remote position. Visa sponsorship available. Team of 6 engineers. Benefits: health insurance, equity, PTO.",
-        "application_url": "https://example.com/apply",
-        "visa_sponsorship": True,
-        "remote_policy": "remote",
-        "tech_stack": ["Python", "Django", "PostgreSQL", "Docker"],
-        "seniority": "senior",
-        "contract_type": "full-time",
-        "team_size": "6 engineers",
-        "benefits": "health insurance, equity, PTO",
-    })
+    mock_llm.generate.return_value = json.dumps(
+        {
+            "full_description": "We are hiring a Senior Python Engineer. Must know Django, PostgreSQL, Docker. Full-time remote position. Visa sponsorship available. Team of 6 engineers. Benefits: health insurance, equity, PTO.",
+            "application_url": "https://example.com/apply",
+            "visa_sponsorship": True,
+            "remote_policy": "remote",
+            "tech_stack": ["Python", "Django", "PostgreSQL", "Docker"],
+            "seniority": "senior",
+            "contract_type": "full-time",
+            "team_size": "6 engineers",
+            "benefits": "health insurance, equity, PTO",
+        }
+    )
 
     result = await extract_with_llm(html, mock_llm)
     assert result is not None

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote_plus
 
 import httpx
 
@@ -87,7 +86,9 @@ async def scrape_workday_employer(
                     facets = discovered
                     logger.debug(f"Workday ({name}): using facets {facets}")
                 else:
-                    logger.debug(f"Workday ({name}): no Japan facet found, searching without filter")
+                    logger.debug(
+                        f"Workday ({name}): no Japan facet found, searching without filter"
+                    )
 
             payload = {
                 "appliedFacets": facets,

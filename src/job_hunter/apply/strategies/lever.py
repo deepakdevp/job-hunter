@@ -1,4 +1,5 @@
 """Lever ATS form filler strategy."""
+
 from __future__ import annotations
 
 import logging

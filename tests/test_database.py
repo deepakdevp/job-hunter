@@ -23,7 +23,9 @@ def test_insert_and_get_job(db):
 
 
 def test_upsert_updates_existing(db):
-    job = Job(url="https://example.com/1", title="SWE", company="A", location="Tokyo", source="indeed")
+    job = Job(
+        url="https://example.com/1", title="SWE", company="A", location="Tokyo", source="indeed"
+    )
     db.upsert_job(job)
     job.score = 8
     job.score_reason = "Great match"
@@ -33,7 +35,9 @@ def test_upsert_updates_existing(db):
 
 
 def test_dedup_returns_true_for_existing(db):
-    job = Job(url="https://example.com/1", title="SWE", company="A", location="Tokyo", source="indeed")
+    job = Job(
+        url="https://example.com/1", title="SWE", company="A", location="Tokyo", source="indeed"
+    )
     db.upsert_job(job)
     assert db.exists("https://example.com/1") is True
     assert db.exists("https://example.com/2") is False
@@ -86,15 +90,23 @@ def test_get_unscored_jobs(db):
 
 def test_get_all_urls(db):
     for i in range(3):
-        db.upsert_job(Job(url=f"https://example.com/{i}", title="J", company="A", location="T", source="i"))
+        db.upsert_job(
+            Job(url=f"https://example.com/{i}", title="J", company="A", location="T", source="i")
+        )
     urls = db.get_all_urls()
     assert len(urls) == 3
     assert "https://example.com/0" in urls
 
 
 def test_get_stats(db):
-    db.upsert_job(Job(url="https://a.com/1", title="J", company="A", location="T", source="i", status="new"))
-    db.upsert_job(Job(url="https://a.com/2", title="J", company="A", location="T", source="i", status="scored"))
+    db.upsert_job(
+        Job(url="https://a.com/1", title="J", company="A", location="T", source="i", status="new")
+    )
+    db.upsert_job(
+        Job(
+            url="https://a.com/2", title="J", company="A", location="T", source="i", status="scored"
+        )
+    )
     stats = db.get_stats()
     assert stats["new"] == 1
     assert stats["scored"] == 1

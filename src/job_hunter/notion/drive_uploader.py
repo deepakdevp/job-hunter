@@ -26,9 +26,7 @@ class DriveUploader:
             from googleapiclient.discovery import build
 
             scopes = ["https://www.googleapis.com/auth/drive.file"]
-            creds = Credentials.from_service_account_file(
-                self._credentials_path, scopes=scopes
-            )
+            creds = Credentials.from_service_account_file(self._credentials_path, scopes=scopes)
             self._service = build("drive", "v3", credentials=creds)
             return self._service
         except ImportError:
@@ -92,9 +90,11 @@ class DriveUploader:
             }
             media = MediaFileUpload(str(file_path), mimetype=mime_type)
 
-            uploaded = service.files().create(
-                body=file_metadata, media_body=media, fields="id, webViewLink"
-            ).execute()
+            uploaded = (
+                service.files()
+                .create(body=file_metadata, media_body=media, fields="id, webViewLink")
+                .execute()
+            )
 
             file_id = uploaded["id"]
 

@@ -31,8 +31,9 @@ class BaseScraper(ABC):
         )
 
     @abstractmethod
-    async def scrape(self, query: str = "", location: str = "", max_results: int = 50) -> list[Job]:
-        ...
+    async def scrape(
+        self, query: str = "", location: str = "", max_results: int = 50
+    ) -> list[Job]: ...
 
     async def close(self):
         await self.client.aclose()

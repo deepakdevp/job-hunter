@@ -88,7 +88,9 @@ def load_config(config_dir: Path | None = None, data_dir: Path | None = None) ->
     if employers_path.exists():
         data = yaml.safe_load(employers_path.read_text()) or {}
         employers_raw = data.get("employers", {})
-        employers = list(employers_raw.values()) if isinstance(employers_raw, dict) else employers_raw
+        employers = (
+            list(employers_raw.values()) if isinstance(employers_raw, dict) else employers_raw
+        )
 
     sites_path = config_dir / "sites.yaml"
     sites_config = {}

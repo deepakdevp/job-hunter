@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 
@@ -106,7 +105,7 @@ async def tailor_resume(
                 # Retry with feedback
                 prompt = (
                     prompt
-                    + f"\n\n## VALIDATION ERRORS (fix these):\n"
+                    + "\n\n## VALIDATION ERRORS (fix these):\n"
                     + "\n".join(f"- {m}" for m in error_msgs)
                     + "\n\nRegenerate the resume fixing ALL the above issues."
                 )

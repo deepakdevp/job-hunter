@@ -1,4 +1,5 @@
 """Pipeline runner — chains all stages with best-effort error handling."""
+
 from __future__ import annotations
 
 import asyncio
@@ -83,7 +84,10 @@ def _run_enrich(config_dir: Path, data_dir: Path) -> StageResult:
     if config.llm_api_key or config.llm_provider == "ollama":
         try:
             from job_hunter.llm.base import get_provider
-            llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
+
+            llm = get_provider(
+                config.llm_provider, api_key=config.llm_api_key, model=config.llm_model
+            )
         except Exception:
             pass
 
@@ -151,7 +155,9 @@ def _run_tailor(config_dir: Path, data_dir: Path) -> StageResult:
 
             cl_text = asyncio.run(generate_cover_letter(job, profile, llm))
             if cl_text:
-                _, cl_txt = render_cover_letter(cl_text, profile, job.title, job.company, output_dir, job.url)
+                _, cl_txt = render_cover_letter(
+                    cl_text, profile, job.title, job.company, output_dir, job.url
+                )
                 job.cover_letter_path = str(cl_txt) if cl_txt else None
 
             job.status = "tailored"
@@ -200,7 +206,10 @@ def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> Stage
     if config.llm_api_key or config.llm_provider == "ollama":
         try:
             from job_hunter.llm.base import get_provider
-            llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
+
+            llm = get_provider(
+                config.llm_provider, api_key=config.llm_api_key, model=config.llm_model
+            )
         except Exception:
             pass
 

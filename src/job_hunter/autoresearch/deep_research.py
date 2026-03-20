@@ -14,6 +14,7 @@ For each high-value job, runs iterative LLM + web search cycles:
 3. Evidence-Based Re-Scoring: re-score with gathered evidence
 4. Resume Optimization: generate → critique → refine loop
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -43,6 +44,7 @@ _research_history: dict[str, dict] = {}  # url -> {confidence, iteration, score}
 
 
 # ── Steering: program.md ───────────────────────────────────────────────────
+
 
 def load_program(program_path: Path | None = None) -> str:
     """Load research steering directives from program.md (Karpathy pattern).
@@ -80,16 +82,16 @@ def _parse_program_config(program_text: str) -> dict:
     }
 
     # Parse time budget
-    m = re.search(r'Time budget per job[:\s]*(\d+)\s*seconds', program_text, re.IGNORECASE)
+    m = re.search(r"Time budget per job[:\s]*(\d+)\s*seconds", program_text, re.IGNORECASE)
     if m:
         config["time_budget_per_job"] = int(m.group(1))
 
     # Parse max rounds
-    m = re.search(r'Max search rounds[:\s]*(\d+)\s*for company', program_text, re.IGNORECASE)
+    m = re.search(r"Max search rounds[:\s]*(\d+)\s*for company", program_text, re.IGNORECASE)
     if m:
         config["max_company_rounds"] = int(m.group(1))
 
-    m = re.search(r'(\d+)\s*for visa', program_text, re.IGNORECASE)
+    m = re.search(r"(\d+)\s*for visa", program_text, re.IGNORECASE)
     if m:
         config["max_visa_rounds"] = int(m.group(1))
 
@@ -97,6 +99,7 @@ def _parse_program_config(program_text: str) -> dict:
 
 
 # ── Utility functions ──────────────────────────────────────────────────────
+
 
 def _extract_company_from_jd(description: str, title: str = "") -> str | None:
     """Try to extract company name from job description text."""
@@ -106,10 +109,10 @@ def _extract_company_from_jd(description: str, title: str = "") -> str | None:
     desc = description[:2000]
 
     patterns = [
-        r'(?:about|join|at)\s+([A-Z][A-Za-z0-9\s&.]+?)(?:\s*(?:is|,|\.|!|\n))',
-        r'([A-Z][A-Za-z0-9\s&.]+?)\s+is\s+(?:hiring|looking|seeking|a\s+(?:leading|global|innovative))',
-        r'(?:company|employer|organization):\s*([A-Za-z0-9\s&.]+)',
-        r'(?:work(?:ing)?\s+(?:at|for))\s+([A-Z][A-Za-z0-9\s&.]+?)(?:\s*[,.\n!])',
+        r"(?:about|join|at)\s+([A-Z][A-Za-z0-9\s&.]+?)(?:\s*(?:is|,|\.|!|\n))",
+        r"([A-Z][A-Za-z0-9\s&.]+?)\s+is\s+(?:hiring|looking|seeking|a\s+(?:leading|global|innovative))",
+        r"(?:company|employer|organization):\s*([A-Za-z0-9\s&.]+)",
+        r"(?:work(?:ing)?\s+(?:at|for))\s+([A-Z][A-Za-z0-9\s&.]+?)(?:\s*[,.\n!])",
     ]
 
     for pattern in patterns:
@@ -117,7 +120,10 @@ def _extract_company_from_jd(description: str, title: str = "") -> str | None:
         if match:
             name = match.group(1).strip()
             if len(name) >= 3 and len(name) <= 50 and name.lower() not in _SKIP_COMPANIES:
-                if not any(w in name.lower() for w in ("the team", "our company", "the company", "this role")):
+                if not any(
+                    w in name.lower()
+                    for w in ("the team", "our company", "the company", "this role")
+                ):
                     return name
 
     return None
@@ -127,21 +133,21 @@ def _repair_json(text: str) -> dict:
     """Attempt to parse JSON, with aggressive repair for LLM truncation."""
     text = text.strip()
     if text.startswith("```"):
-        text = re.sub(r'^```(?:json)?\s*', '', text)
-        text = re.sub(r'\s*```$', '', text)
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
 
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    cleaned = re.sub(r',\s*([}\]])', r'\1', text)
+    cleaned = re.sub(r",\s*([}\]])", r"\1", text)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
-    start = text.find('{')
+    start = text.find("{")
     if start < 0:
         raise ValueError(f"No JSON object found in: {text[:200]}")
 
@@ -151,11 +157,11 @@ def _repair_json(text: str) -> dict:
         r'((?:true|false|null|\d+(?:\.\d+)?|"[^"]*"))\s*[,}\]]',
     ]:
         for m in reversed(list(re.finditer(end_pattern, content))):
-            candidate = content[:m.end()]
-            open_braces = candidate.count('{') - candidate.count('}')
-            open_brackets = candidate.count('[') - candidate.count(']')
-            candidate = candidate.rstrip().rstrip(',')
-            candidate += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+            candidate = content[: m.end()]
+            open_braces = candidate.count("{") - candidate.count("}")
+            open_brackets = candidate.count("[") - candidate.count("]")
+            candidate = candidate.rstrip().rstrip(",")
+            candidate += "]" * max(0, open_brackets) + "}" * max(0, open_braces)
             try:
                 return json.loads(candidate)
             except json.JSONDecodeError:
@@ -311,9 +317,11 @@ Return JSON:
 
 # ── Data structures ────────────────────────────────────────────────────────
 
+
 @dataclass
 class ResearchEvidence:
     """Accumulated evidence from research loops."""
+
     company_info: dict = field(default_factory=dict)
     visa_info: dict = field(default_factory=dict)
     rescore_info: dict = field(default_factory=dict)
@@ -350,16 +358,21 @@ class ResearchEvidence:
         if self.company_info:
             parts.append(f"Company: {self.company_info.get('company_summary', 'N/A')}")
         if self.visa_info:
-            parts.append(f"Visa: {self.visa_info.get('visa_status', 'N/A')} "
-                        f"(conf={self.visa_info.get('confidence', '?')})")
+            parts.append(
+                f"Visa: {self.visa_info.get('visa_status', 'N/A')} "
+                f"(conf={self.visa_info.get('confidence', '?')})"
+            )
         if self.rescore_info:
             parts.append(f"Re-scored: {self.rescore_info.get('final_score', '?')}/10")
-        parts.append(f"[{self.status}|{self.confidence}|{self.total_searches} searches, "
-                    f"{self.total_llm_calls} LLM, {self.research_time_seconds:.0f}s]")
+        parts.append(
+            f"[{self.status}|{self.confidence}|{self.total_searches} searches, "
+            f"{self.total_llm_calls} LLM, {self.research_time_seconds:.0f}s]"
+        )
         return " | ".join(parts)
 
 
 # ── Core research functions ────────────────────────────────────────────────
+
 
 async def _do_searches(queries: list[str], max_results: int = 3) -> tuple[str, list[str]]:
     """Run multiple web searches, fetch top pages, return formatted results + citations."""
@@ -370,11 +383,11 @@ async def _do_searches(queries: list[str], max_results: int = 3) -> tuple[str, l
         results = await web_search(query, max_results=max_results)
         for r in results:
             all_results.append(f"- [{r['title']}]({r['url']}): {r['snippet']}")
-            citations.append(r['url'])
+            citations.append(r["url"])
 
             # Fetch page text for top result only (to save time)
-            if r == results[0] and r['url']:
-                page_text = await fetch_page_text(r['url'], max_chars=3000)
+            if r == results[0] and r["url"]:
+                page_text = await fetch_page_text(r["url"], max_chars=3000)
                 if page_text:
                     all_results.append(f"  Page content: {page_text[:1500]}")
 
@@ -388,11 +401,24 @@ def _append_results_log(log_path: Path, row: dict):
     """Append a single result row to TSV log (Karpathy pattern: append-only, never versioned)."""
     exists = log_path.exists()
     with open(log_path, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "timestamp", "company", "title", "old_score", "new_score",
-            "status", "confidence", "visa_status", "citations",
-            "searches", "llm_calls", "time_secs",
-        ], delimiter="\t")
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "timestamp",
+                "company",
+                "title",
+                "old_score",
+                "new_score",
+                "status",
+                "confidence",
+                "visa_status",
+                "citations",
+                "searches",
+                "llm_calls",
+                "time_secs",
+            ],
+            delimiter="\t",
+        )
         if not exists:
             writer.writeheader()
         writer.writerow(row)
@@ -456,10 +482,13 @@ async def research_company(
         f"{company} glassdoor reviews engineering",
     ]
 
+    follow_up_queries = []
     for round_num in range(max_rounds):
         # Time budget check (Karpathy pattern: fixed time, not fixed rounds)
         if time.time() - start > time_limit:
-            logger.info(f"  Company research: time limit ({time_limit}s) reached after {round_num} rounds")
+            logger.info(
+                f"  Company research: time limit ({time_limit}s) reached after {round_num} rounds"
+            )
             break
 
         queries = initial_queries if round_num == 0 else follow_up_queries
@@ -534,6 +563,7 @@ async def verify_visa(
     evidence = json.dumps(company_evidence, indent=2)[:2000]
     result = {}
 
+    follow_up_queries = []
     for round_num in range(max_rounds):
         if time.time() - start > time_limit:
             logger.info(f"  Visa verification: time limit ({time_limit}s) reached")
@@ -589,9 +619,13 @@ async def evidence_rescore(
     """Re-score job using accumulated evidence."""
     evidence_text = evidence.summary()
     if evidence.company_info:
-        evidence_text += f"\n\nCompany research:\n{json.dumps(evidence.company_info, indent=2)[:2000]}"
+        evidence_text += (
+            f"\n\nCompany research:\n{json.dumps(evidence.company_info, indent=2)[:2000]}"
+        )
     if evidence.visa_info:
-        evidence_text += f"\n\nVisa verification:\n{json.dumps(evidence.visa_info, indent=2)[:1000]}"
+        evidence_text += (
+            f"\n\nVisa verification:\n{json.dumps(evidence.visa_info, indent=2)[:1000]}"
+        )
 
     prompt = _EVIDENCE_RESCORE_PROMPT.format(
         title=job.title,
@@ -638,6 +672,7 @@ async def critique_resume(
 
 # ── Main deep research orchestrator ────────────────────────────────────────
 
+
 async def deep_research_job(
     job: Job,
     profile: dict,
@@ -661,7 +696,9 @@ async def deep_research_job(
     # Phase 1: Company Research (iterative, time-budgeted)
     logger.info(f"  [1/4] Researching {job.company}...")
     company_result = await research_company(
-        job, llm, program=program,
+        job,
+        llm,
+        program=program,
         max_rounds=max_company_rounds,
         time_limit=time_budget * 0.4,  # 40% of budget for company research
     )
@@ -673,7 +710,10 @@ async def deep_research_job(
     # Phase 2: Visa Verification (iterative, time-budgeted)
     logger.info(f"  [2/4] Verifying visa for {job.company}...")
     visa_result = await verify_visa(
-        job, evidence.company_info, llm, program=program,
+        job,
+        evidence.company_info,
+        llm,
+        program=program,
         max_rounds=max_visa_rounds,
         time_limit=time_budget * 0.3,  # 30% of budget for visa
     )
@@ -683,22 +723,23 @@ async def deep_research_job(
     evidence.total_llm_calls += visa_result.get("llm_count", 0)
 
     # Phase 3: Evidence-Based Re-Scoring
-    logger.info(f"  [3/4] Re-scoring with evidence...")
+    logger.info("  [3/4] Re-scoring with evidence...")
     rescore = await evidence_rescore(job, evidence, profile, llm, program=program)
     evidence.rescore_info = rescore
     evidence.total_llm_calls += 1
 
     # Phase 4: Resume Critique (if resume exists)
     if job.resume_path and Path(job.resume_path).exists():
-        logger.info(f"  [4/4] Critiquing resume...")
+        logger.info("  [4/4] Critiquing resume...")
         from job_hunter.autoresearch.resume_audit import extract_text_from_pdf
+
         resume_text = extract_text_from_pdf(job.resume_path)
         if resume_text:
             critique = await critique_resume(job, resume_text, evidence.company_info, llm)
             evidence.resume_critique = critique
             evidence.total_llm_calls += 1
     else:
-        logger.info(f"  [4/4] No resume to critique, skipping")
+        logger.info("  [4/4] No resume to critique, skipping")
 
     evidence.research_time_seconds = time.time() - start
     return evidence
@@ -734,7 +775,11 @@ async def run_deep_research(
         candidates.extend(db.get_jobs_by_status(status))
 
     # Extract company names from JD for "Unknown" jobs
-    unknowns = [j for j in candidates if (j.company or "").strip().lower() in _SKIP_COMPANIES and j.description]
+    unknowns = [
+        j
+        for j in candidates
+        if (j.company or "").strip().lower() in _SKIP_COMPANIES and j.description
+    ]
     if unknowns:
         logger.info(f"Extracting company names from {len(unknowns)} 'Unknown' jobs...")
         for j in unknowns:
@@ -758,9 +803,9 @@ async def run_deep_research(
 
     # Filter and sort
     candidates = [
-        j for j in candidates
-        if (j.score or 0) >= min_score
-        and (j.company or "").strip().lower() not in _SKIP_COMPANIES
+        j
+        for j in candidates
+        if (j.score or 0) >= min_score and (j.company or "").strip().lower() not in _SKIP_COMPANIES
     ]
     candidates.sort(key=lambda j: j.score or 0, reverse=True)
     candidates = candidates[:max_jobs]
@@ -787,8 +832,8 @@ async def run_deep_research(
         evidence = ResearchEvidence()
 
         try:
-            logger.info(f"\n{'='*60}")
-            logger.info(f"Deep research [{i+1}/{total}]: {job.title} @ {job.company}")
+            logger.info(f"\n{'=' * 60}")
+            logger.info(f"Deep research [{i + 1}/{total}]: {job.title} @ {job.company}")
             logger.info(f"  Current score: {job.score}/10 | Status: {job.status}")
 
             evidence = await deep_research_job(job, profile, llm, program=program, config=config)
@@ -820,8 +865,7 @@ async def run_deep_research(
                 change_why = evidence.rescore_info.get("score_change_explanation", "")
                 job.score = new_score
                 job.score_reason = (
-                    f"[DEEP-AR: {old_score}→{new_score}] {reason}\n"
-                    f"Change: {change_why}"
+                    f"[DEEP-AR: {old_score}→{new_score}] {reason}\nChange: {change_why}"
                 )
 
                 visa_status = evidence.visa_info.get("visa_status", "")
@@ -838,7 +882,9 @@ async def run_deep_research(
                 # DISCARD: revert to old score (Karpathy: git reset --hard)
                 status = "discard"
                 results["discarded"] += 1
-                logger.info(f"  DISCARD: {old_score} → {new_score} reverted (insufficient evidence)")
+                logger.info(
+                    f"  DISCARD: {old_score} → {new_score} reverted (insufficient evidence)"
+                )
                 new_score = old_score  # Revert
                 evidence.status = "discard"
             else:
@@ -859,19 +905,21 @@ async def run_deep_research(
                 results["resumes_flagged"] += 1
 
             # Per-job summary
-            results["per_job"].append({
-                "title": job.title[:50],
-                "company": job.company,
-                "old_score": old_score,
-                "new_score": job.score,
-                "status": status,
-                "confidence": evidence.confidence,
-                "visa_status": evidence.visa_info.get("visa_status", "UNKNOWN"),
-                "research_time": round(evidence.research_time_seconds, 1),
-                "searches": evidence.total_searches,
-                "llm_calls": evidence.total_llm_calls,
-                "citations": evidence.citation_count,
-            })
+            results["per_job"].append(
+                {
+                    "title": job.title[:50],
+                    "company": job.company,
+                    "old_score": old_score,
+                    "new_score": job.score,
+                    "status": status,
+                    "confidence": evidence.confidence,
+                    "visa_status": evidence.visa_info.get("visa_status", "UNKNOWN"),
+                    "research_time": round(evidence.research_time_seconds, 1),
+                    "searches": evidence.total_searches,
+                    "llm_calls": evidence.total_llm_calls,
+                    "citations": evidence.citation_count,
+                }
+            )
 
             if on_job_complete:
                 on_job_complete(job, evidence)
@@ -881,20 +929,23 @@ async def run_deep_research(
             evidence.status = "crash"
 
         # Append to TSV log — every result, whether kept or discarded (Karpathy pattern)
-        _append_results_log(results_log, {
-            "timestamp": datetime.now().isoformat(),
-            "company": job.company,
-            "title": job.title[:50],
-            "old_score": old_score if 'old_score' in dir() else job.score,
-            "new_score": job.score,
-            "status": status,
-            "confidence": evidence.confidence,
-            "visa_status": evidence.visa_info.get("visa_status", "UNKNOWN"),
-            "citations": evidence.citation_count,
-            "searches": evidence.total_searches,
-            "llm_calls": evidence.total_llm_calls,
-            "time_secs": round(evidence.research_time_seconds, 1),
-        })
+        _append_results_log(
+            results_log,
+            {
+                "timestamp": datetime.now().isoformat(),
+                "company": job.company,
+                "title": job.title[:50],
+                "old_score": old_score if "old_score" in dir() else job.score,
+                "new_score": job.score,
+                "status": status,
+                "confidence": evidence.confidence,
+                "visa_status": evidence.visa_info.get("visa_status", "UNKNOWN"),
+                "citations": evidence.citation_count,
+                "searches": evidence.total_searches,
+                "llm_calls": evidence.total_llm_calls,
+                "time_secs": round(evidence.research_time_seconds, 1),
+            },
+        )
 
         if on_progress:
             on_progress(i + 1, total)
@@ -903,11 +954,13 @@ async def run_deep_research(
 
     results["total_time_seconds"] = round(time.time() - start, 1)
 
-    logger.info(f"\n{'='*60}")
-    logger.info(f"Deep Research Complete: {results['total_researched']} jobs, "
-                f"{results['scores_changed']} scores changed "
-                f"(kept={results['kept']}, discarded={results['discarded']}), "
-                f"{results['total_time_seconds']}s total")
+    logger.info(f"\n{'=' * 60}")
+    logger.info(
+        f"Deep Research Complete: {results['total_researched']} jobs, "
+        f"{results['scores_changed']} scores changed "
+        f"(kept={results['kept']}, discarded={results['discarded']}), "
+        f"{results['total_time_seconds']}s total"
+    )
 
     return results
 
@@ -947,13 +1000,13 @@ async def run_deep_research_loop(
     try:
         while True:
             iteration += 1
-            logger.info(f"\n{'#'*60}")
+            logger.info(f"\n{'#' * 60}")
             logger.info(f"# LOOP ITERATION {iteration}")
-            logger.info(f"{'#'*60}")
+            logger.info(f"{'#' * 60}")
 
             # Reload program.md each iteration (human may have edited it)
             program = load_program(program_path)
-            config = _parse_program_config(program)
+            _parse_program_config(program)  # validate config (result used implicitly)
 
             # On iterations > 1, only research LOW-confidence or un-researched jobs
             if iteration > 1:
@@ -968,7 +1021,8 @@ async def run_deep_research_loop(
                 candidates.extend(db.get_jobs_by_status(status))
 
             candidates = [
-                j for j in candidates
+                j
+                for j in candidates
                 if (j.score or 0) >= min_score
                 and (j.company or "").strip().lower() not in _SKIP_COMPANIES
             ]
@@ -977,7 +1031,8 @@ async def run_deep_research_loop(
                 # Filter: skip HIGH confidence, re-research LOW
                 pre_count = len(candidates)
                 candidates = [
-                    j for j in candidates
+                    j
+                    for j in candidates
                     if _research_history.get(j.url, {}).get("confidence") != "HIGH"
                 ]
                 skipped = pre_count - len(candidates)
@@ -994,7 +1049,9 @@ async def run_deep_research_loop(
 
             # Run single pass
             iter_results = await run_deep_research(
-                db, profile, llm,
+                db,
+                profile,
+                llm,
                 min_score=min_score,
                 max_jobs=max_jobs,
                 log_dir=log_dir,
@@ -1014,8 +1071,7 @@ async def run_deep_research_loop(
 
             # If no LOW confidence jobs remain, wait longer
             low_conf_count = sum(
-                1 for h in _research_history.values()
-                if h.get("confidence") == "LOW"
+                1 for h in _research_history.values() if h.get("confidence") == "LOW"
             )
             if low_conf_count == 0:
                 logger.info("All jobs at MEDIUM/HIGH confidence. Waiting 300s...")

@@ -55,15 +55,23 @@ BLOCKED_DESCRIPTION_PATTERNS = [
     re.compile(r"\bUS\s+citizens?\s+only\b", re.IGNORECASE),
     re.compile(r"\bEU\s+citizens?\s+only\b", re.IGNORECASE),
     # Core ML framework requirements (as primary skill, not just "nice to have")
-    re.compile(r"\b(?:extensive|deep|strong)\s+(?:experience|expertise)\s+(?:in|with)\s+(?:PyTorch|TensorFlow)\b", re.IGNORECASE),
-    re.compile(r"\bmanag(?:e|ing)\s+(?:a\s+)?team\s+of\s+(?:[5-9]|[1-9][0-9])\+?\s+engineers\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:extensive|deep|strong)\s+(?:experience|expertise)\s+(?:in|with)\s+(?:PyTorch|TensorFlow)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\bmanag(?:e|ing)\s+(?:a\s+)?team\s+of\s+(?:[5-9]|[1-9][0-9])\+?\s+engineers\b",
+        re.IGNORECASE,
+    ),
 ]
 
 # Tokyo location patterns
 TOKYO_PATTERNS = [
     re.compile(r"\btokyo\b", re.IGNORECASE),
     re.compile(r"東京"),
-    re.compile(r"渋谷|新宿|港区|千代田|品川|目黒|世田谷|中央区|文京|台東|墨田|江東|大田|中野|杉並|豊島|北区|板橋|練馬|足立|荒川|葛飾|江戸川"),
+    re.compile(
+        r"渋谷|新宿|港区|千代田|品川|目黒|世田谷|中央区|文京|台東|墨田|江東|大田|中野|杉並|豊島|北区|板橋|練馬|足立|荒川|葛飾|江戸川"
+    ),
     re.compile(r"\bshibuya\b", re.IGNORECASE),
     re.compile(r"\bshinjuku\b", re.IGNORECASE),
     re.compile(r"\bminato\b", re.IGNORECASE),
@@ -145,11 +153,27 @@ def _title_matches_roles(title: str, target_roles: list[str]) -> bool:
 
     # Also match common generic patterns (excluding blocked roles)
     generic_patterns = [
-        r"software", r"developer", r"frontend", r"front[\s-]?end",
-        r"backend", r"back[\s-]?end", r"full[\s-]?stack", r"fullstack",
-        r"\bai\b", r"python", r"react", r"node", r"typescript",
-        r"agentic", r"llm", r"genai", r"gen[\s-]?ai", r"mcp",
-        r"rag\b", r"vector\s+database", r"fine[\s-]?tun",
+        r"software",
+        r"developer",
+        r"frontend",
+        r"front[\s-]?end",
+        r"backend",
+        r"back[\s-]?end",
+        r"full[\s-]?stack",
+        r"fullstack",
+        r"\bai\b",
+        r"python",
+        r"react",
+        r"node",
+        r"typescript",
+        r"agentic",
+        r"llm",
+        r"genai",
+        r"gen[\s-]?ai",
+        r"mcp",
+        r"rag\b",
+        r"vector\s+database",
+        r"fine[\s-]?tun",
     ]
     for pattern in generic_patterns:
         if re.search(pattern, norm_title):
@@ -168,11 +192,15 @@ def pre_filter_job(job: Job, target_roles: list[str]) -> PreFilterResult:
 
     # 2. Title match against target roles
     if not _title_matches_roles(job.title, target_roles):
-        return PreFilterResult(passed=False, reason=f"Title '{job.title}' doesn't match target roles")
+        return PreFilterResult(
+            passed=False, reason=f"Title '{job.title}' doesn't match target roles"
+        )
 
     # 3. Location must be Tokyo or Remote
     if not _is_tokyo_or_remote(job.location):
-        return PreFilterResult(passed=False, reason=f"Location '{job.location}' is not Tokyo/Remote")
+        return PreFilterResult(
+            passed=False, reason=f"Location '{job.location}' is not Tokyo/Remote"
+        )
 
     # 4. Job must not be older than 2 weeks
     if _is_too_old(job.posted_date):

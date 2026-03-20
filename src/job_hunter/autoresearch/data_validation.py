@@ -1,4 +1,5 @@
 """Pipeline 2: Data Validation — URL checks, smart dedup, non-Japan filter, field quality."""
+
 from __future__ import annotations
 
 import logging
@@ -13,9 +14,29 @@ logger = logging.getLogger(__name__)
 
 # Japan location keywords
 JAPAN_KEYWORDS = (
-    "japan", "tokyo", "osaka", "jp", "yokohama", "fukuoka", "nagoya", "kyoto",
-    "shibuya", "shinjuku", "minato", "roppongi", "meguro", "chiyoda", "remote",
-    "千代田", "渋谷", "新宿", "港区", "品川", "大手町", "高輪", "千駄ヶ谷",
+    "japan",
+    "tokyo",
+    "osaka",
+    "jp",
+    "yokohama",
+    "fukuoka",
+    "nagoya",
+    "kyoto",
+    "shibuya",
+    "shinjuku",
+    "minato",
+    "roppongi",
+    "meguro",
+    "chiyoda",
+    "remote",
+    "千代田",
+    "渋谷",
+    "新宿",
+    "港区",
+    "品川",
+    "大手町",
+    "高輪",
+    "千駄ヶ谷",
 )
 
 
@@ -77,7 +98,7 @@ def find_low_quality(jobs: list[Job]) -> list[dict]:
             issues.append("missing_company")
         if job.title and job.title == job.company:
             issues.append("title_equals_company")
-        if job.title and re.match(r'^(unknown|test|n/a|none|null)$', job.title.strip(), re.I):
+        if job.title and re.match(r"^(unknown|test|n/a|none|null)$", job.title.strip(), re.I):
             issues.append("garbage_title")
         if issues:
             flagged.append({"url": job.url, "issues": issues})
@@ -114,7 +135,7 @@ async def run_data_validation(
         job = db.get_job(url)
         if job and job.status not in ("filtered",):
             job.status = "filtered"
-            job.score_reason = f"Dead URL (autoresearch validation)"
+            job.score_reason = "Dead URL (autoresearch validation)"
             db.upsert_job(job)
     results["dead_urls"] = len(dead)
     done += 1

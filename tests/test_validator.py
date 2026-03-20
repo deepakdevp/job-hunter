@@ -1,4 +1,3 @@
-import pytest
 from job_hunter.tailor.validator import (
     validate_resume,
     ValidationMode,
@@ -30,6 +29,7 @@ I hope this helps with your application.
 
 
 # --- Full validation ---
+
 
 def test_validate_clean_resume_passes():
     result = validate_resume(CLEAN_RESUME, mode=ValidationMode.STRICT)
@@ -68,6 +68,7 @@ def test_validate_llm_leaks_always_error():
 
 # --- Filler word detection ---
 
+
 def test_check_filler_words_finds_matches():
     issues = _check_filler_words("I am passionate about this role", ValidationMode.STRICT)
     assert len(issues) >= 1
@@ -87,6 +88,7 @@ def test_check_filler_no_match():
 
 # --- LLM leak detection ---
 
+
 def test_check_llm_leaks_finds_phrases():
     issues = _check_llm_leaks("Here is the corrected version of your resume")
     assert len(issues) >= 1
@@ -98,6 +100,7 @@ def test_check_llm_leaks_clean_text():
 
 
 # --- Fabrication detection ---
+
 
 def test_check_fabrication_no_issues():
     text = "Full Stack Developer at Medikabazaar\nAI Engineer at DrishteAI"
@@ -120,6 +123,7 @@ def test_check_fabrication_handles_partial_match():
 
 
 # --- Combined scenarios ---
+
 
 def test_validate_with_fabrication():
     text = "Software Engineer at FakeStartup\nBuilt amazing things."

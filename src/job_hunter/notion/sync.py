@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from job_hunter.database import Job, JobDB
+from job_hunter.database import JobDB
 from job_hunter.notion.client import NotionJobDB
 from job_hunter.notion.drive_uploader import DriveUploader
 
@@ -22,8 +22,18 @@ def push_jobs_to_notion(
     """
     # Get all jobs that should be synced
     all_jobs = []
-    for status in ("new", "enriched", "scored", "tailored", "synced", "applied",
-                   "reviewing", "phone_screen", "interview", "offer"):
+    for status in (
+        "new",
+        "enriched",
+        "scored",
+        "tailored",
+        "synced",
+        "applied",
+        "reviewing",
+        "phone_screen",
+        "interview",
+        "offer",
+    ):
         all_jobs.extend(db.get_jobs_by_status(status))
 
     total = len(all_jobs)

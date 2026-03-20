@@ -1,4 +1,5 @@
 """Japan-specific form fillers: Wantedly, Green, CareerCross."""
+
 from __future__ import annotations
 
 import logging

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from job_hunter.discover.japan_scrapers import TokyoDevScraper, JapanDevScraper, GaijinPotScraper
 
 
@@ -28,10 +28,10 @@ MOCK_JAPANDEV_HTML = """
 
 MOCK_GAIJINPOT_HTML = """
 <html><body>
-<a href="/job/12345">IT Support Specialist</a>
+<a href="/en/job/12345">IT Support Specialist</a>
 <span class="company">ABC Corp</span>
 <span class="location">Tokyo</span>
-<a href="/job/67890">Web Developer</a>
+<a href="/en/job/67890">Web Developer</a>
 <span class="company">XYZ Inc</span>
 <span class="location">Osaka</span>
 </body></html>
@@ -68,5 +68,5 @@ async def test_gaijinpot_scraper():
     jobs = await scraper.scrape()
     assert len(jobs) >= 2
     assert all(j.source == "gaijinpot" for j in jobs)
-    assert all("/job/" in j.url for j in jobs)
+    assert all("/en/job/" in j.url for j in jobs)
     await scraper.close()

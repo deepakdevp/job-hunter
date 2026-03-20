@@ -138,7 +138,9 @@ def discover(ctx, workers, skip_jobspy, skip_japan, skip_workday):
                 )
                 jobs = parse_jobspy_results(df)
                 all_jobs.extend(jobs)
-                console.print(f"  {search['query']} in {search.get('location', '?')}: {len(jobs)} jobs")
+                console.print(
+                    f"  {search['query']} in {search.get('location', '?')}: {len(jobs)} jobs"
+                )
             except Exception as e:
                 console.print(f"  [red]Failed: {search.get('query')}: {e}[/]")
 
@@ -157,7 +159,9 @@ def discover(ctx, workers, skip_jobspy, skip_japan, skip_workday):
         from job_hunter.discover.workday_scraper import run_workday_scrapers
 
         workday_jobs = asyncio.run(
-            run_workday_scrapers(config.employers, query="software engineer", max_results_per_employer=20)
+            run_workday_scrapers(
+                config.employers, query="software engineer", max_results_per_employer=20
+            )
         )
         all_jobs.extend(workday_jobs)
         console.print(f"  Workday portals: {len(workday_jobs)} jobs")
@@ -198,6 +202,7 @@ def enrich(ctx, limit, tier1_only):
     llm = None
     if not tier1_only:
         from job_hunter.llm.base import get_provider
+
         try:
             llm = get_provider(
                 config.llm_provider,
@@ -288,7 +293,9 @@ def score(ctx):
 
 
 @cli.command()
-@click.option("--all", "tailor_all", is_flag=True, help="Tailor all untailored jobs above threshold")
+@click.option(
+    "--all", "tailor_all", is_flag=True, help="Tailor all untailored jobs above threshold"
+)
 @click.option("--job-url", default=None, help="Tailor a specific job by URL")
 @click.option("--validation", type=click.Choice(["strict", "normal", "lenient"]), default="strict")
 @click.pass_context
@@ -369,23 +376,17 @@ def tailor(ctx, tailor_all, job_url, validation):
         task = progress.add_task("Tailoring", total=len(jobs))
 
         for job in jobs:
-            tailored_latex = asyncio.run(
-                do_tailor(job, resume, profile, llm, mode=mode)
-            )
+            tailored_latex = asyncio.run(do_tailor(job, resume, profile, llm, mode=mode))
 
             if tailored_latex:
-                pdf_path = render_latex_to_pdf(
-                    resume.preamble, tailored_latex, output_dir, job.url
-                )
+                pdf_path = render_latex_to_pdf(resume.preamble, tailored_latex, output_dir, job.url)
                 if pdf_path:
                     job.resume_path = str(pdf_path)
                 else:
                     console.print(f"  [yellow]Resume PDF render failed for {job.title}[/]")
 
                 # Generate cover letter
-                cl_text = asyncio.run(
-                    generate_cover_letter(job, profile, llm, mode=mode)
-                )
+                cl_text = asyncio.run(generate_cover_letter(job, profile, llm, mode=mode))
                 if cl_text:
                     cl_pdf, cl_txt = render_cover_letter(
                         cl_text, profile, job.title, job.company, output_dir, job.url
@@ -480,7 +481,9 @@ def sync_init(ctx, page_id):
 
 
 @sync.command("push")
-@click.option("--drive-creds", type=click.Path(exists=True), default=None, help="Google service account JSON")
+@click.option(
+    "--drive-creds", type=click.Path(exists=True), default=None, help="Google service account JSON"
+)
 @click.pass_context
 def sync_push(ctx, drive_creds):
     """Push jobs to Notion (and optionally upload PDFs to Drive)."""
@@ -505,9 +508,12 @@ def sync_push(ctx, drive_creds):
         drive = DriveUploader(credentials_path=drive_creds)
 
     with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-        BarColumn(), TextColumn("{task.completed}/{task.total}"),
-        TimeElapsedColumn(), console=console,
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
     ) as progress:
         task = None
 
@@ -543,9 +549,12 @@ def sync_pull(ctx):
     notion = NotionJobDB(token=token, database_id=db_id)
 
     with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}"),
-        BarColumn(), TextColumn("{task.completed}/{task.total}"),
-        TimeElapsedColumn(), console=console,
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
     ) as progress:
         task = None
 
@@ -565,13 +574,14 @@ def sync_pull(ctx):
 @click.option("--job-url", default=None, help="Apply to a single job by URL")
 @click.option("--all", "apply_all", is_flag=True, help="Apply to all eligible jobs")
 @click.option("--limit", default=None, type=int, help="Max applications in batch mode")
-@click.option("--login", "login_domain", default=None, help="Open browser to save login session for a domain")
+@click.option(
+    "--login", "login_domain", default=None, help="Open browser to save login session for a domain"
+)
 @click.option("--dry-run", is_flag=True, help="Fill forms without submitting")
 @click.pass_context
 def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
     """Apply to jobs using browser automation."""
     import json as _json
-    import os
     import time
 
     from job_hunter.apply.applicant import Applicant
@@ -589,6 +599,7 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
     try:
         from job_hunter.config import load_config
         from job_hunter.llm.base import get_provider
+
         config = load_config(config_dir)
         llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
     except Exception:
@@ -763,9 +774,7 @@ def research_run(ctx, min_score, max_jobs):
 
     profile = config.profile
 
-    console.print(
-        f"[bold]Deep research: min_score={min_score}, max_jobs={max_jobs}[/]"
-    )
+    console.print(f"[bold]Deep research: min_score={min_score}, max_jobs={max_jobs}[/]")
 
     with Progress(
         SpinnerColumn(),
@@ -783,14 +792,16 @@ def research_run(ctx, min_score, max_jobs):
                 prog_task = progress.add_task("Deep research", total=total)
             progress.update(prog_task, completed=done)
 
-        results = asyncio.run(run_deep_research(
-            db,
-            profile,
-            llm,
-            min_score=min_score,
-            max_jobs=max_jobs,
-            on_progress=on_progress,
-        ))
+        results = asyncio.run(
+            run_deep_research(
+                db,
+                profile,
+                llm,
+                min_score=min_score,
+                max_jobs=max_jobs,
+                on_progress=on_progress,
+            )
+        )
 
     db.close()
 
@@ -830,9 +841,7 @@ def research_loop(ctx, min_score, max_jobs):
 
     profile = config.profile
 
-    console.print(
-        f"[bold]Deep research loop: min_score={min_score}, max_jobs={max_jobs}[/]"
-    )
+    console.print(f"[bold]Deep research loop: min_score={min_score}, max_jobs={max_jobs}[/]")
     console.print("[dim]Runs until Ctrl+C. Re-researches LOW confidence jobs each iteration.[/]")
 
     with Progress(
@@ -859,15 +868,17 @@ def research_loop(ctx, min_score, max_jobs):
                 f"discarded={iter_results.get('discarded', 0)}[/]"
             )
 
-        results = asyncio.run(run_deep_research_loop(
-            db,
-            profile,
-            llm,
-            min_score=min_score,
-            max_jobs=max_jobs,
-            on_progress=on_progress,
-            on_iteration_complete=on_iteration_complete,
-        ))
+        results = asyncio.run(
+            run_deep_research_loop(
+                db,
+                profile,
+                llm,
+                min_score=min_score,
+                max_jobs=max_jobs,
+                on_progress=on_progress,
+                on_iteration_complete=on_iteration_complete,
+            )
+        )
 
     db.close()
 

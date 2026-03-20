@@ -1,4 +1,5 @@
 """Generic form filler — fallback strategy for unknown ATS platforms."""
+
 from __future__ import annotations
 
 import logging
@@ -82,9 +83,7 @@ class GenericFormFiller(BaseFormFiller):
         filled = 0
         skipped = 0
 
-        inputs = await page.query_selector_all(
-            "input:visible, textarea:visible, select:visible"
-        )
+        inputs = await page.query_selector_all("input:visible, textarea:visible, select:visible")
 
         for inp in inputs:
             input_type = (await inp.get_attribute("type") or "text").lower()

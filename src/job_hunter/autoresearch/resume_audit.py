@@ -1,4 +1,5 @@
 """Pipeline 4: Resume Audit — validate generated resumes against job descriptions."""
+
 from __future__ import annotations
 
 import json
@@ -46,7 +47,9 @@ def extract_text_from_pdf(pdf_path: str) -> str | None:
     try:
         result = subprocess.run(
             ["pdftotext", "-layout", pdf_path, "-"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout
@@ -56,6 +59,7 @@ def extract_text_from_pdf(pdf_path: str) -> str | None:
     # Fallback: try python-based extraction
     try:
         import fitz  # PyMuPDF
+
         doc = fitz.open(pdf_path)
         text = ""
         for page in doc:
@@ -78,7 +82,8 @@ def quick_resume_audit(resume_text: str, job: Job) -> list[str]:
 
     # Check for template placeholders
     import re
-    placeholders = re.findall(r'\[([A-Z_\s]+)\]|\{\{([A-Z_\s]+)\}\}', resume_text)
+
+    placeholders = re.findall(r"\[([A-Z_\s]+)\]|\{\{([A-Z_\s]+)\}\}", resume_text)
     if placeholders:
         issues.append(f"Template placeholders found: {placeholders[:3]}")
 
@@ -184,7 +189,9 @@ async def run_resume_audit(
                     results["llm_flagged"] += 1
                     hallucinations = audit_result.get("hallucinations", [])
                     if hallucinations:
-                        logger.warning(f"Resume hallucinations ({job.title[:30]}): {hallucinations}")
+                        logger.warning(
+                            f"Resume hallucinations ({job.title[:30]}): {hallucinations}"
+                        )
                         results["needs_regeneration"] += 1
                         job.resume_path = None
                         job.status = "scored"

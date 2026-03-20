@@ -86,26 +86,108 @@ def _extract_country(location: str) -> str:
     """Extract country from a location string."""
     loc = location.lower().strip()
     # Japanese locations
-    if any(x in loc for x in ("japan", "tokyo", "osaka", "jp", "yokohama", "fukuoka",
-                                "nagoya", "kyoto", "shibuya", "shinjuku", "minato",
-                                "meguro", "sumida", "chiyoda", "千", "渋谷", "大手町",
-                                "高輪", "千駄", "港区", "新宿")):
+    if any(
+        x in loc
+        for x in (
+            "japan",
+            "tokyo",
+            "osaka",
+            "jp",
+            "yokohama",
+            "fukuoka",
+            "nagoya",
+            "kyoto",
+            "shibuya",
+            "shinjuku",
+            "minato",
+            "meguro",
+            "sumida",
+            "chiyoda",
+            "千",
+            "渋谷",
+            "大手町",
+            "高輪",
+            "千駄",
+            "港区",
+            "新宿",
+        )
+    ):
         return "Japan"
-    if any(x in loc for x in ("germany", "berlin", "munich", "frankfurt", "hamburg", "deutschland")):
+    if any(
+        x in loc for x in ("germany", "berlin", "munich", "frankfurt", "hamburg", "deutschland")
+    ):
         return "Germany"
-    if any(x in loc for x in ("netherlands", "amsterdam", "rotterdam", "den haag", "eindhoven", "nederland")):
+    if any(
+        x in loc
+        for x in ("netherlands", "amsterdam", "rotterdam", "den haag", "eindhoven", "nederland")
+    ):
         return "Netherlands"
-    if any(x in loc for x in ("uk", "united kingdom", "london", "manchester", "edinburgh", "cambridge", "england", "scotland")):
+    if any(
+        x in loc
+        for x in (
+            "uk",
+            "united kingdom",
+            "london",
+            "manchester",
+            "edinburgh",
+            "cambridge",
+            "england",
+            "scotland",
+        )
+    ):
         return "UK"
-    if any(x in loc for x in ("france", "paris", "spain", "madrid", "barcelona", "italy", "rome", "milan",
-                                "sweden", "stockholm", "ireland", "dublin", "europe", "switzerland", "zurich",
-                                "austria", "vienna", "poland", "warsaw", "denmark", "copenhagen",
-                                "finland", "helsinki", "norway", "oslo", "portugal", "lisbon", "prague",
-                                "belgium", "brussels")):
+    if any(
+        x in loc
+        for x in (
+            "france",
+            "paris",
+            "spain",
+            "madrid",
+            "barcelona",
+            "italy",
+            "rome",
+            "milan",
+            "sweden",
+            "stockholm",
+            "ireland",
+            "dublin",
+            "europe",
+            "switzerland",
+            "zurich",
+            "austria",
+            "vienna",
+            "poland",
+            "warsaw",
+            "denmark",
+            "copenhagen",
+            "finland",
+            "helsinki",
+            "norway",
+            "oslo",
+            "portugal",
+            "lisbon",
+            "prague",
+            "belgium",
+            "brussels",
+        )
+    ):
         return "Europe"
     if any(x in loc for x in ("remote", "anywhere", "worldwide", "global", "work from home")):
         return "Remote"
-    if any(x in loc for x in ("india", "bangalore", "mumbai", "delhi", "hyderabad", "pune", "gurugram", "noida", "chennai")):
+    if any(
+        x in loc
+        for x in (
+            "india",
+            "bangalore",
+            "mumbai",
+            "delhi",
+            "hyderabad",
+            "pune",
+            "gurugram",
+            "noida",
+            "chennai",
+        )
+    ):
         return "India"
     return "Other"
 
@@ -171,7 +253,9 @@ class NotionJobDB:
             return existing
         return self.create_database(parent_page_id)
 
-    def create_page(self, job: Job, resume_url: str | None = None, cover_letter_url: str | None = None) -> str:
+    def create_page(
+        self, job: Job, resume_url: str | None = None, cover_letter_url: str | None = None
+    ) -> str:
         """Create a Notion page for a job. Returns the page ID."""
         if not self.database_id:
             raise ValueError("Database ID not set. Call init_database first.")
@@ -186,7 +270,13 @@ class NotionJobDB:
         logger.debug(f"Created Notion page {page_id} for {job.url}")
         return page_id
 
-    def update_page(self, page_id: str, job: Job, resume_url: str | None = None, cover_letter_url: str | None = None):
+    def update_page(
+        self,
+        page_id: str,
+        job: Job,
+        resume_url: str | None = None,
+        cover_letter_url: str | None = None,
+    ):
         """Update an existing Notion page."""
         props = self._job_to_properties(job, resume_url, cover_letter_url)
         self.client.pages.update(page_id=page_id, properties=props)
@@ -228,7 +318,9 @@ class NotionJobDB:
 
         return job_url, status
 
-    def _job_to_properties(self, job: Job, resume_url: str | None = None, cover_letter_url: str | None = None) -> dict:
+    def _job_to_properties(
+        self, job: Job, resume_url: str | None = None, cover_letter_url: str | None = None
+    ) -> dict:
         """Convert a Job to Notion page properties."""
         props: dict[str, Any] = {
             "Job Title": {"title": [{"text": {"content": job.title[:2000]}}]},

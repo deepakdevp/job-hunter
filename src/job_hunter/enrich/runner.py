@@ -17,7 +17,9 @@ from job_hunter.enrich.rate_limiter import DomainRateLimiter
 logger = logging.getLogger(__name__)
 
 
-async def enrich_job(url: str, llm=None, rate_limiter: DomainRateLimiter | None = None) -> EnrichResult | None:
+async def enrich_job(
+    url: str, llm=None, rate_limiter: DomainRateLimiter | None = None
+) -> EnrichResult | None:
     """Run the 4-tier enrichment cascade for a single job URL."""
     if rate_limiter:
         await rate_limiter.acquire(url)

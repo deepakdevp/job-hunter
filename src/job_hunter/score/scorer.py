@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from job_hunter.database import Job, JobDB
 from job_hunter.score.prefilter import pre_filter_job
@@ -75,9 +74,9 @@ def detect_jd_language(description: str) -> str:
         return "english"
 
     # Count Japanese characters (hiragana, katakana, kanji)
-    jp_chars = len(re.findall(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', description))
+    jp_chars = len(re.findall(r"[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]", description))
     # Count ASCII letters
-    en_chars = len(re.findall(r'[a-zA-Z]', description))
+    en_chars = len(re.findall(r"[a-zA-Z]", description))
 
     total = jp_chars + en_chars
     if total == 0:

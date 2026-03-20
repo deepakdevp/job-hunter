@@ -16,9 +16,7 @@ def config_dir(tmp_path):
         "resume_facts": {"companies": [], "education": [], "metrics": []},
     }
     searches = {
-        "searches": [
-            {"query": "software engineer", "location": "Tokyo", "boards": ["indeed"]}
-        ]
+        "searches": [{"query": "software engineer", "location": "Tokyo", "boards": ["indeed"]}]
     }
     (tmp_path / "profile.json").write_text(json.dumps(profile))
     (tmp_path / "searches.yaml").write_text(yaml.dump(searches))
@@ -50,9 +48,7 @@ def test_config_score_threshold_default(config_dir):
 
 def test_config_score_threshold_from_env(config_dir):
     env_file = config_dir / ".env"
-    env_file.write_text(
-        "GEMINI_API_KEY=k\nNOTION_TOKEN=t\nNOTION_PAGE_ID=p\nSCORE_THRESHOLD=8\n"
-    )
+    env_file.write_text("GEMINI_API_KEY=k\nNOTION_TOKEN=t\nNOTION_PAGE_ID=p\nSCORE_THRESHOLD=8\n")
     config = load_config(config_dir)
     assert config.score_threshold == 8
 
@@ -117,6 +113,7 @@ def test_llm_api_key_resolves_from_provider(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setenv("GEMINI_API_KEY", "gemini-test")
     from job_hunter.config import resolve_llm_api_key
+
     assert resolve_llm_api_key("openai") == "sk-test"
     assert resolve_llm_api_key("gemini") == "gemini-test"
     assert resolve_llm_api_key("ollama") == ""

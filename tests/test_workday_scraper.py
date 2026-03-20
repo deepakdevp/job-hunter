@@ -80,9 +80,11 @@ async def test_run_workday_scrapers_aggregates():
     }
 
     mock_response = MagicMock()
-    mock_response.json.return_value = {"jobPostings": [
-        {"title": "Dev", "externalPath": "/job/1", "locationsText": "Tokyo", "postedOn": ""},
-    ]}
+    mock_response.json.return_value = {
+        "jobPostings": [
+            {"title": "Dev", "externalPath": "/job/1", "locationsText": "Tokyo", "postedOn": ""},
+        ]
+    }
     mock_response.raise_for_status = MagicMock()
 
     with patch("job_hunter.discover.workday_scraper.httpx.AsyncClient") as mock_client_cls:

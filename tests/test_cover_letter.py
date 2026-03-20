@@ -1,4 +1,3 @@
-import json
 import pytest
 from unittest.mock import AsyncMock
 from job_hunter.database import Job
@@ -25,7 +24,10 @@ PROFILE = {
         {
             "company": "Medikabazaar",
             "title": "Full Stack Developer",
-            "highlights": ["Built REST APIs serving 10K+ daily requests", "Migrated frontend to React"],
+            "highlights": [
+                "Built REST APIs serving 10K+ daily requests",
+                "Migrated frontend to React",
+            ],
         },
     ],
 }
@@ -33,8 +35,11 @@ PROFILE = {
 
 def _make_job(**kwargs) -> Job:
     defaults = dict(
-        url="https://example.com/1", title="Python Developer",
-        company="TestCo", location="Tokyo", source="indeed",
+        url="https://example.com/1",
+        title="Python Developer",
+        company="TestCo",
+        location="Tokyo",
+        source="indeed",
         description="Looking for a Python developer with Django experience to join our platform team.",
         tech_stack="Python, Django, PostgreSQL",
     )
@@ -56,6 +61,7 @@ FORMAL_COVER_LETTER = """I am writing to apply for the position of Python Develo
 
 
 # --- validate_cover_letter ---
+
 
 def test_validate_good_cover_letter():
     result = validate_cover_letter(GOOD_COVER_LETTER, "TestCo", ValidationMode.STRICT)
@@ -95,6 +101,7 @@ def test_validate_lenient_passes_filler():
 
 # --- _clean_response ---
 
+
 def test_clean_response_strips_salutation():
     text = "Dear Hiring Manager,\n\nActual content here."
     result = _clean_response(text)
@@ -117,6 +124,7 @@ def test_clean_response_strips_code_fences():
 
 
 # --- generate_cover_letter ---
+
 
 @pytest.mark.asyncio
 async def test_generate_cover_letter_success():
@@ -159,6 +167,7 @@ async def test_generate_cover_letter_llm_error():
 
 
 # --- Renderer helpers ---
+
 
 def test_escape_latex():
     assert _escape_latex("AT&T costs $50") == r"AT\&T costs \$50"

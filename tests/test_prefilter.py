@@ -1,4 +1,3 @@
-import pytest
 from job_hunter.database import Job
 from job_hunter.score.prefilter import pre_filter_job, _title_matches_roles
 
@@ -14,8 +13,11 @@ TARGET_ROLES = [
 
 def _make_job(**kwargs) -> Job:
     defaults = dict(
-        url="https://example.com/1", title="Software Engineer",
-        company="TestCo", location="Tokyo", source="indeed",
+        url="https://example.com/1",
+        title="Software Engineer",
+        company="TestCo",
+        location="Tokyo",
+        source="indeed",
         description="A great role for a software engineer.",
     )
     defaults.update(kwargs)
@@ -23,6 +25,7 @@ def _make_job(**kwargs) -> Job:
 
 
 # --- Title matching ---
+
 
 def test_title_exact_match():
     assert _title_matches_roles("Software Engineer", TARGET_ROLES) is True
@@ -49,6 +52,7 @@ def test_title_no_match():
 
 # --- Pre-filter pass ---
 
+
 def test_prefilter_passes_good_job():
     job = _make_job(title="Senior Software Engineer", salary_min=6_000_000)
     result = pre_filter_job(job, TARGET_ROLES)
@@ -62,6 +66,7 @@ def test_prefilter_passes_no_salary():
 
 
 # --- Pre-filter reject: title blocklist ---
+
 
 def test_prefilter_rejects_intern():
     job = _make_job(title="Software Engineering Intern")
@@ -90,6 +95,7 @@ def test_prefilter_rejects_phd_required():
 
 # --- Pre-filter reject: title mismatch ---
 
+
 def test_prefilter_rejects_unrelated_title():
     job = _make_job(title="Marketing Manager")
     result = pre_filter_job(job, TARGET_ROLES)
@@ -98,6 +104,7 @@ def test_prefilter_rejects_unrelated_title():
 
 
 # --- Pre-filter reject: salary ---
+
 
 def test_prefilter_rejects_low_salary():
     job = _make_job(title="Software Engineer", salary_min=3_000_000)
@@ -113,6 +120,7 @@ def test_prefilter_passes_salary_at_floor():
 
 
 # --- Pre-filter reject: description blocklist ---
+
 
 def test_prefilter_rejects_10_plus_years():
     job = _make_job(description="Requires 10+ years of experience in distributed systems.")

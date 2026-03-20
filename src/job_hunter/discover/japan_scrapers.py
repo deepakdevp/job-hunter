@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import logging
-import re
 from urllib.parse import quote_plus, urljoin
 
 from bs4 import BeautifulSoup
@@ -81,13 +79,17 @@ class JapanDevScraper(BaseScraper):
             listings = soup.select("a[href*='/jobs/']")
             seen = set()
 
-            for item in listings[:max_results * 2]:
+            for item in listings[: max_results * 2]:
                 href = item.get("href", "")
                 if not href or href in seen:
                     continue
                 if not href.startswith("http"):
                     href = urljoin(self.base_url, href)
-                if "/jobs/" not in href or href == f"{self.base_url}/jobs" or href == f"{self.base_url}/jobs/":
+                if (
+                    "/jobs/" not in href
+                    or href == f"{self.base_url}/jobs"
+                    or href == f"{self.base_url}/jobs/"
+                ):
                     continue
                 seen.add(href)
 
@@ -130,7 +132,7 @@ class GaijinPotScraper(BaseScraper):
             listings = soup.select("a[href*='/en/job/']")
             seen = set()
 
-            for item in listings[:max_results * 2]:
+            for item in listings[: max_results * 2]:
                 href = item.get("href", "")
                 if not href or href in seen:
                     continue

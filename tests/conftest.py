@@ -25,9 +25,7 @@ def sample_profile():
                     "bullets": ["Built distributed systems", "Led team of 5"],
                 }
             ],
-            "education": [
-                {"school": "MIT", "degree": "BS Computer Science", "year": 2022}
-            ],
+            "education": [{"school": "MIT", "degree": "BS Computer Science", "year": 2022}],
             "metrics": ["Reduced API latency by 40%", "Led team of 5 engineers"],
             "certifications": [],
         },

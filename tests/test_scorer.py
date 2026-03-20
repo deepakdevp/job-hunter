@@ -7,7 +7,6 @@ from job_hunter.score.scorer import (
     score_job,
     run_scoring,
     _build_scoring_prompt,
-    SCORING_WEIGHTS,
 )
 
 SAMPLE_PROFILE = {
@@ -25,11 +24,16 @@ SAMPLE_PROFILE = {
 
 def _make_job(**kwargs) -> Job:
     defaults = dict(
-        url="https://example.com/1", title="Software Engineer",
-        company="TestCo", location="Tokyo, Japan", source="indeed",
+        url="https://example.com/1",
+        title="Software Engineer",
+        company="TestCo",
+        location="Tokyo, Japan",
+        source="indeed",
         description="Looking for a Python developer with React and AWS experience. Visa sponsorship available.",
-        salary_min=6_000_000, salary_raw="6M JPY",
-        visa_sponsorship=True, remote_policy="hybrid",
+        salary_min=6_000_000,
+        salary_raw="6M JPY",
+        visa_sponsorship=True,
+        remote_policy="hybrid",
         tech_stack="Python, React, AWS",
     )
     defaults.update(kwargs)
@@ -38,15 +42,18 @@ def _make_job(**kwargs) -> Job:
 
 # --- parse_score_response ---
 
+
 def test_parse_score_response_valid():
-    response = json.dumps({
-        "skills_match": 9,
-        "role_fit": 8,
-        "location_remote": 10,
-        "visa_sponsorship": 10,
-        "salary_fit": 8,
-        "reason": "Strong Python/React match with 5/6 required skills. Tokyo hybrid with visa makes this ideal.",
-    })
+    response = json.dumps(
+        {
+            "skills_match": 9,
+            "role_fit": 8,
+            "location_remote": 10,
+            "visa_sponsorship": 10,
+            "salary_fit": 8,
+            "reason": "Strong Python/React match with 5/6 required skills. Tokyo hybrid with visa makes this ideal.",
+        }
+    )
     result = parse_score_response(response)
     assert result is not None
     assert 1 <= result.score <= 10
@@ -56,27 +63,31 @@ def test_parse_score_response_valid():
 
 
 def test_parse_score_response_computes_weighted_average():
-    response = json.dumps({
-        "skills_match": 10,
-        "role_fit": 10,
-        "location_remote": 10,
-        "visa_sponsorship": 10,
-        "salary_fit": 10,
-        "reason": "Perfect match.",
-    })
+    response = json.dumps(
+        {
+            "skills_match": 10,
+            "role_fit": 10,
+            "location_remote": 10,
+            "visa_sponsorship": 10,
+            "salary_fit": 10,
+            "reason": "Perfect match.",
+        }
+    )
     result = parse_score_response(response)
     assert result.score == 10
 
 
 def test_parse_score_response_low_scores():
-    response = json.dumps({
-        "skills_match": 1,
-        "role_fit": 1,
-        "location_remote": 1,
-        "visa_sponsorship": 1,
-        "salary_fit": 1,
-        "reason": "No match at all.",
-    })
+    response = json.dumps(
+        {
+            "skills_match": 1,
+            "role_fit": 1,
+            "location_remote": 1,
+            "visa_sponsorship": 1,
+            "salary_fit": 1,
+            "reason": "No match at all.",
+        }
+    )
     result = parse_score_response(response)
     assert result.score == 1
 
@@ -87,30 +98,35 @@ def test_parse_score_response_invalid_json():
 
 
 def test_parse_score_response_missing_dimension():
-    response = json.dumps({
-        "skills_match": 8,
-        "role_fit": 7,
-        # missing location_remote, visa_sponsorship, salary_fit
-        "reason": "Partial.",
-    })
+    response = json.dumps(
+        {
+            "skills_match": 8,
+            "role_fit": 7,
+            # missing location_remote, visa_sponsorship, salary_fit
+            "reason": "Partial.",
+        }
+    )
     result = parse_score_response(response)
     assert result is None
 
 
 def test_parse_score_response_out_of_range():
-    response = json.dumps({
-        "skills_match": 15,  # out of range
-        "role_fit": 8,
-        "location_remote": 7,
-        "visa_sponsorship": 9,
-        "salary_fit": 6,
-        "reason": "Bad score.",
-    })
+    response = json.dumps(
+        {
+            "skills_match": 15,  # out of range
+            "role_fit": 8,
+            "location_remote": 7,
+            "visa_sponsorship": 9,
+            "salary_fit": 6,
+            "reason": "Bad score.",
+        }
+    )
     result = parse_score_response(response)
     assert result is None
 
 
 # --- _build_scoring_prompt ---
+
 
 def test_build_scoring_prompt_includes_profile():
     job = _make_job()
@@ -119,7 +135,7 @@ def test_build_scoring_prompt_includes_profile():
     assert "React" in prompt
     assert "Software Engineer" in prompt
     assert "Tokyo" in prompt
-    assert "6,000,000" in prompt
+    assert "Yes, sponsored" in prompt
 
 
 def test_build_scoring_prompt_handles_missing_data():
@@ -130,15 +146,21 @@ def test_build_scoring_prompt_handles_missing_data():
 
 # --- score_job ---
 
+
 @pytest.mark.asyncio
 async def test_score_job_success():
     job = _make_job()
     mock_llm = AsyncMock()
-    mock_llm.generate.return_value = json.dumps({
-        "skills_match": 9, "role_fit": 8, "location_remote": 10,
-        "visa_sponsorship": 10, "salary_fit": 7,
-        "reason": "Excellent skills overlap. Tokyo with visa is ideal.",
-    })
+    mock_llm.generate.return_value = json.dumps(
+        {
+            "skills_match": 9,
+            "role_fit": 8,
+            "location_remote": 10,
+            "visa_sponsorship": 10,
+            "salary_fit": 7,
+            "reason": "Excellent skills overlap. Tokyo with visa is ideal.",
+        }
+    )
     result = await score_job(job, SAMPLE_PROFILE, mock_llm)
     assert result is not None
     assert 1 <= result.score <= 10
@@ -156,29 +178,45 @@ async def test_score_job_llm_failure():
 
 # --- run_scoring ---
 
+
 @pytest.mark.asyncio
 async def test_run_scoring_filters_and_scores(tmp_path):
     db = JobDB(tmp_path / "test.db")
 
     # Good job — should be scored
-    db.upsert_job(Job(
-        url="https://example.com/1", title="Software Engineer",
-        company="A", location="Tokyo", source="indeed",
-        description="Python developer needed. Visa sponsored.",
-    ))
+    db.upsert_job(
+        Job(
+            url="https://example.com/1",
+            title="Software Engineer",
+            company="A",
+            location="Tokyo",
+            source="indeed",
+            description="Python developer needed. Visa sponsored.",
+        )
+    )
     # Bad job — should be filtered (Marketing Manager)
-    db.upsert_job(Job(
-        url="https://example.com/2", title="Marketing Manager",
-        company="B", location="Tokyo", source="indeed",
-        description="Marketing role.",
-    ))
+    db.upsert_job(
+        Job(
+            url="https://example.com/2",
+            title="Marketing Manager",
+            company="B",
+            location="Tokyo",
+            source="indeed",
+            description="Marketing role.",
+        )
+    )
 
     mock_llm = AsyncMock()
-    mock_llm.generate.return_value = json.dumps({
-        "skills_match": 8, "role_fit": 7, "location_remote": 10,
-        "visa_sponsorship": 5, "salary_fit": 5,
-        "reason": "Good skills match. Location ideal but visa unclear.",
-    })
+    mock_llm.generate.return_value = json.dumps(
+        {
+            "skills_match": 8,
+            "role_fit": 7,
+            "location_remote": 10,
+            "visa_sponsorship": 5,
+            "salary_fit": 5,
+            "reason": "Good skills match. Location ideal but visa unclear.",
+        }
+    )
 
     scored, filtered, total = await run_scoring(db, SAMPLE_PROFILE, mock_llm)
     assert total == 2

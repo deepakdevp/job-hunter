@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,13 +18,16 @@ def mock_service():
 
 @pytest.fixture
 def uploader(mock_service):
-    with patch("job_hunter.notion.drive_uploader.DriveUploader._get_service", return_value=mock_service):
+    with patch(
+        "job_hunter.notion.drive_uploader.DriveUploader._get_service", return_value=mock_service
+    ):
         u = DriveUploader(credentials_path="/fake/creds.json")
         u._service = mock_service
         yield u
 
 
 # --- Folder management ---
+
 
 def test_ensure_folder_finds_existing(uploader, mock_service):
     mock_service.files().list().execute.return_value = {
@@ -55,6 +58,7 @@ def test_ensure_folder_cached(uploader):
 
 
 # --- File upload ---
+
 
 def test_upload_file_success(uploader, mock_service, tmp_path):
     pdf_file = tmp_path / "resume.pdf"
@@ -95,6 +99,7 @@ def test_upload_file_exception(uploader, mock_service, tmp_path):
 
 # --- Convenience methods ---
 
+
 def test_upload_resume(uploader, tmp_path):
     pdf = tmp_path / "resume.pdf"
     pdf.write_bytes(b"%PDF")
@@ -112,7 +117,7 @@ def test_upload_cover_letter_pdf(uploader, tmp_path):
     pdf.write_bytes(b"%PDF")
 
     with patch.object(uploader, "upload_file", return_value="https://link") as mock_upload:
-        result = uploader.upload_cover_letter(pdf)
+        uploader.upload_cover_letter(pdf)
 
     mock_upload.assert_called_once_with(pdf, "application/pdf")
 
@@ -122,12 +127,13 @@ def test_upload_cover_letter_txt(uploader, tmp_path):
     txt.write_text("Dear Hiring Manager...")
 
     with patch.object(uploader, "upload_file", return_value="https://link") as mock_upload:
-        result = uploader.upload_cover_letter(txt)
+        uploader.upload_cover_letter(txt)
 
     mock_upload.assert_called_once_with(txt, "text/plain")
 
 
 # --- Service initialization ---
+
 
 def test_get_service_import_error():
     u = DriveUploader(credentials_path="/fake.json")

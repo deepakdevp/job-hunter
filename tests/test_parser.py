@@ -1,4 +1,3 @@
-import pytest
 from job_hunter.tailor.parser import parse_latex_resume, _strip_latex, _extract_items
 
 

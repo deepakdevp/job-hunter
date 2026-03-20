@@ -1,8 +1,11 @@
-import json
 import pytest
 from unittest.mock import AsyncMock
 from job_hunter.database import Job
-from job_hunter.tailor.tailor import tailor_resume, _clean_llm_response, _extract_companies_from_profile
+from job_hunter.tailor.tailor import (
+    tailor_resume,
+    _clean_llm_response,
+    _extract_companies_from_profile,
+)
 from job_hunter.tailor.parser import parse_latex_resume
 from job_hunter.tailor.validator import ValidationMode
 
@@ -49,8 +52,11 @@ PROFILE = {
 
 def _make_job(**kwargs) -> Job:
     defaults = dict(
-        url="https://example.com/1", title="Python Developer",
-        company="TestCo", location="Tokyo", source="indeed",
+        url="https://example.com/1",
+        title="Python Developer",
+        company="TestCo",
+        location="Tokyo",
+        source="indeed",
         description="Looking for a Python developer with Django and React experience.",
         tech_stack="Python, Django, React",
     )
@@ -59,6 +65,7 @@ def _make_job(**kwargs) -> Job:
 
 
 # --- _clean_llm_response ---
+
 
 def test_clean_llm_response_extracts_document():
     response = r"Some preamble\n\begin{document}\nContent\n\end{document}\nExtra"
@@ -81,6 +88,7 @@ def test_clean_llm_response_plain():
 
 # --- _extract_companies_from_profile ---
 
+
 def test_extract_companies_from_profile():
     companies = _extract_companies_from_profile(PROFILE)
     assert "Medikabazaar" in companies
@@ -94,6 +102,7 @@ def test_extract_companies_empty_profile():
 
 
 # --- tailor_resume ---
+
 
 @pytest.mark.asyncio
 async def test_tailor_resume_success():
@@ -116,7 +125,9 @@ async def test_tailor_resume_retries_on_filler():
     mock_llm = AsyncMock()
 
     # First call returns filler, second call is clean
-    filler_response = r"\begin{document}I am passionate about this role at Medikabazaar.\end{document}"
+    filler_response = (
+        r"\begin{document}I am passionate about this role at Medikabazaar.\end{document}"
+    )
     mock_llm.generate.side_effect = [filler_response, TAILORED_RESPONSE]
 
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.STRICT)

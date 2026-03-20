@@ -1,4 +1,5 @@
 """Indeed form filler — handles Indeed's apply flow."""
+
 from __future__ import annotations
 
 import logging
@@ -45,6 +46,7 @@ class IndeedFormFiller(BaseFormFiller):
             logger.info("Redirected to external site: %s", page.url)
             # Fall back to generic filling on external site
             from job_hunter.apply.strategies.generic import GenericFormFiller
+
             generic = GenericFormFiller()
             return await generic.fill(page, job, profile)
 
@@ -130,7 +132,9 @@ class IndeedFormFiller(BaseFormFiller):
                 value = field_mapping["email"]
             elif any(w in label_lower for w in ("phone", "電話", "携帯")):
                 value = field_mapping["phone"]
-            elif any(w in label_lower for w in ("cover letter", "カバーレター", "志望動機", "message")):
+            elif any(
+                w in label_lower for w in ("cover letter", "カバーレター", "志望動機", "message")
+            ):
                 if job.cover_letter_path:
                     cl_path = Path(job.cover_letter_path)
                     if cl_path.exists() and cl_path.suffix == ".txt":

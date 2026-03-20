@@ -87,9 +87,12 @@ def render_cover_letter(
     name = profile.get("name", "Candidate")
     email = profile.get("email", "")
     phone = profile.get("phone", "")
-    location = profile.get("preferred_locations", [""])[0] if profile.get("preferred_locations") else ""
+    location = (
+        profile.get("preferred_locations", [""])[0] if profile.get("preferred_locations") else ""
+    )
 
     from datetime import date
+
     date_str = date.today().strftime("%B %d, %Y")
 
     body_latex = _text_to_latex_paragraphs(text)
@@ -132,7 +135,13 @@ def _compile_cover_letter(latex_source: str, output_dir: Path, url_hash: str) ->
         if compiler == "tectonic":
             cmd = [compiler, str(tex_path)]
         else:
-            cmd = [compiler, "-interaction=nonstopmode", "-output-directory", tmp_dir, str(tex_path)]
+            cmd = [
+                compiler,
+                "-interaction=nonstopmode",
+                "-output-directory",
+                tmp_dir,
+                str(tex_path),
+            ]
 
         try:
             result = subprocess.run(cmd, cwd=tmp_dir, capture_output=True, text=True, timeout=60)

@@ -1,4 +1,5 @@
 """Browser session manager for per-domain storageState persistence."""
+
 from __future__ import annotations
 
 import json

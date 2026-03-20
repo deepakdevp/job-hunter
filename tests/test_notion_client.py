@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -45,16 +45,20 @@ def sample_job():
 
 # --- Database creation ---
 
-def test_create_database(mock_client, notion):
-    mock_client.databases.create.return_value = {"id": "new-db-id"}
 
-    db_id = notion.create_database("parent-page-id")
+def test_create_database(mock_client, notion):
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"id": "new-db-id"}
+    mock_response.raise_for_status.return_value = None
+
+    with patch("job_hunter.notion.client.httpx.post", return_value=mock_response) as mock_post:
+        db_id = notion.create_database("parent-page-id")
 
     assert db_id == "new-db-id"
     assert notion.database_id == "new-db-id"
-    mock_client.databases.create.assert_called_once()
-    call_kwargs = mock_client.databases.create.call_args
-    assert call_kwargs.kwargs["properties"] == DATABASE_PROPERTIES
+    mock_post.assert_called_once()
+    call_kwargs = mock_post.call_args
+    assert call_kwargs.kwargs["json"]["properties"] == DATABASE_PROPERTIES
 
 
 def test_find_existing_database(mock_client, notion):
@@ -62,6 +66,7 @@ def test_find_existing_database(mock_client, notion):
         "results": [
             {
                 "id": "existing-db-id",
+                "object": "database",
                 "title": [{"plain_text": DATABASE_TITLE}],
             }
         ]
@@ -83,26 +88,35 @@ def test_find_existing_database_not_found(mock_client, notion):
 
 def test_init_database_finds_existing(mock_client, notion):
     mock_client.search.return_value = {
-        "results": [{"id": "found-id", "title": [{"plain_text": DATABASE_TITLE}]}]
+        "results": [
+            {
+                "id": "found-id",
+                "object": "database",
+                "title": [{"plain_text": DATABASE_TITLE}],
+            }
+        ]
     }
 
     db_id = notion.init_database("parent-page-id")
 
     assert db_id == "found-id"
-    mock_client.databases.create.assert_not_called()
 
 
 def test_init_database_creates_new(mock_client, notion):
     mock_client.search.return_value = {"results": []}
-    mock_client.databases.create.return_value = {"id": "created-id"}
 
-    db_id = notion.init_database("parent-page-id")
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"id": "created-id"}
+    mock_response.raise_for_status.return_value = None
+
+    with patch("job_hunter.notion.client.httpx.post", return_value=mock_response):
+        db_id = notion.init_database("parent-page-id")
 
     assert db_id == "created-id"
-    mock_client.databases.create.assert_called_once()
 
 
 # --- Page CRUD ---
+
 
 def test_create_page(mock_client, notion, sample_job):
     mock_client.pages.create.return_value = {"id": "page-123"}
@@ -123,7 +137,11 @@ def test_create_page(mock_client, notion, sample_job):
 def test_create_page_with_urls(mock_client, notion, sample_job):
     mock_client.pages.create.return_value = {"id": "page-456"}
 
-    page_id = notion.create_page(sample_job, resume_url="https://drive.google.com/resume", cover_letter_url="https://drive.google.com/cl")
+    notion.create_page(
+        sample_job,
+        resume_url="https://drive.google.com/resume",
+        cover_letter_url="https://drive.google.com/cl",
+    )
 
     props = mock_client.pages.create.call_args.kwargs["properties"]
     assert props["Resume PDF"]["url"] == "https://drive.google.com/resume"
@@ -146,6 +164,7 @@ def test_update_page(mock_client, notion, sample_job):
 
 
 # --- Pagination ---
+
 
 def test_get_all_pages_single_page(mock_client, notion):
     mock_client.databases.query.return_value = {
@@ -171,6 +190,7 @@ def test_get_all_pages_pagination(mock_client, notion):
 
 
 # --- Page status extraction ---
+
 
 def test_get_page_status(notion):
     page = {
@@ -201,6 +221,7 @@ def test_get_page_status_no_select(notion):
 
 
 # --- Property mapping ---
+
 
 def test_job_to_properties_tech_stack(notion, sample_job):
     props = notion._job_to_properties(sample_job)

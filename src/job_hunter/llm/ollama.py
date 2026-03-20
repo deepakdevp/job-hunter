@@ -8,13 +8,9 @@ from job_hunter.llm.base import LLMProvider
 
 
 class OllamaProvider(LLMProvider):
-    def __init__(
-        self, *, model: str = "llama3.1", host: str | None = None, **_: object
-    ):
+    def __init__(self, *, model: str = "llama3.1", host: str | None = None, **_: object):
         self._model = model
-        self._host = (
-            host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-        ).rstrip("/")
+        self._host = (host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")).rstrip("/")
 
     async def generate(
         self, prompt: str, *, json_mode: bool = False, max_tokens: int = 4096

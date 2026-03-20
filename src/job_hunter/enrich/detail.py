@@ -65,9 +65,17 @@ _NO_VISA_PATTERNS = [
 ]
 
 _REMOTE_PATTERNS = {
-    "remote": re.compile(r"\b(fully\s+remote|100%\s+remote|remote\s+only|remote\s+position|remote\s+work)\b", re.IGNORECASE),
-    "hybrid": re.compile(r"\b(hybrid|flexible\s+work|partially\s+remote|remote.*office|office.*remote)\b", re.IGNORECASE),
-    "onsite": re.compile(r"\b(on[\s-]?site|in[\s-]?office|office[\s-]?based|in[\s-]?person)\b", re.IGNORECASE),
+    "remote": re.compile(
+        r"\b(fully\s+remote|100%\s+remote|remote\s+only|remote\s+position|remote\s+work)\b",
+        re.IGNORECASE,
+    ),
+    "hybrid": re.compile(
+        r"\b(hybrid|flexible\s+work|partially\s+remote|remote.*office|office.*remote)\b",
+        re.IGNORECASE,
+    ),
+    "onsite": re.compile(
+        r"\b(on[\s-]?site|in[\s-]?office|office[\s-]?based|in[\s-]?person)\b", re.IGNORECASE
+    ),
 }
 
 _SENIORITY_PATTERNS = {
@@ -87,16 +95,53 @@ _CONTRACT_PATTERNS = {
 }
 
 _TECH_KEYWORDS = [
-    "Python", "JavaScript", "TypeScript", "Java", "Go", "Rust", "C\\+\\+", "C#",
-    "Ruby", "PHP", "Swift", "Kotlin",
-    "React", "Vue", "Angular", "Next\\.js", "Node\\.js", "Django", "Flask", "FastAPI",
-    "Spring", "Rails",
-    "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform",
-    "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
-    "GraphQL", "REST", "gRPC",
-    "TensorFlow", "PyTorch", "LangChain", "OpenAI",
-    "Git", "CI/CD", "Jenkins", "GitHub Actions",
-    "Linux", "Nginx", "Apache",
+    "Python",
+    "JavaScript",
+    "TypeScript",
+    "Java",
+    "Go",
+    "Rust",
+    "C\\+\\+",
+    "C#",
+    "Ruby",
+    "PHP",
+    "Swift",
+    "Kotlin",
+    "React",
+    "Vue",
+    "Angular",
+    "Next\\.js",
+    "Node\\.js",
+    "Django",
+    "Flask",
+    "FastAPI",
+    "Spring",
+    "Rails",
+    "AWS",
+    "GCP",
+    "Azure",
+    "Docker",
+    "Kubernetes",
+    "Terraform",
+    "PostgreSQL",
+    "MySQL",
+    "MongoDB",
+    "Redis",
+    "Elasticsearch",
+    "GraphQL",
+    "REST",
+    "gRPC",
+    "TensorFlow",
+    "PyTorch",
+    "LangChain",
+    "OpenAI",
+    "Git",
+    "CI/CD",
+    "Jenkins",
+    "GitHub Actions",
+    "Linux",
+    "Nginx",
+    "Apache",
 ]
 
 _TECH_PATTERN = re.compile(
@@ -182,11 +227,30 @@ def parse_structured_fields(text: str, title: str = "") -> dict:
 
     # Benefits (simple keyword extraction)
     benefit_keywords = [
-        "health insurance", "dental", "vision", "401k", "pension", "stock options",
-        "equity", "RSU", "bonus", "PTO", "paid time off", "vacation",
-        "parental leave", "remote work", "flexible hours", "gym",
-        "education budget", "learning budget", "conference", "relocation",
-        "commuter", "lunch", "snacks", "child care",
+        "health insurance",
+        "dental",
+        "vision",
+        "401k",
+        "pension",
+        "stock options",
+        "equity",
+        "RSU",
+        "bonus",
+        "PTO",
+        "paid time off",
+        "vacation",
+        "parental leave",
+        "remote work",
+        "flexible hours",
+        "gym",
+        "education budget",
+        "learning budget",
+        "conference",
+        "relocation",
+        "commuter",
+        "lunch",
+        "snacks",
+        "child care",
     ]
     found_benefits = []
     for kw in benefit_keywords:
@@ -288,9 +352,7 @@ def extract_description_css(html: str) -> EnrichResult | None:
         title_el = soup.find("h1")
         title = title_el.get_text(strip=True) if title_el else ""
         fields = parse_structured_fields(description, title)
-        return EnrichResult(
-            description=description, apply_url=apply_url, tier="css", **fields
-        )
+        return EnrichResult(description=description, apply_url=apply_url, tier="css", **fields)
     return None
 
 

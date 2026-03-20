@@ -1,9 +1,9 @@
 """Pipeline 3: Score Audit — validate scoring accuracy and detect inflation."""
+
 from __future__ import annotations
 
 import json
 import logging
-import re
 
 from job_hunter.database import Job, JobDB
 from job_hunter.score.scorer import detect_jd_language
@@ -112,7 +112,11 @@ async def run_score_audit(
 
     Returns summary with flagged/adjusted counts.
     """
-    scored_jobs = db.get_jobs_by_status("scored") + db.get_jobs_by_status("tailored") + db.get_jobs_by_status("synced")
+    scored_jobs = (
+        db.get_jobs_by_status("scored")
+        + db.get_jobs_by_status("tailored")
+        + db.get_jobs_by_status("synced")
+    )
     # Only audit jobs with score >= 5 (low scores don't need auditing)
     audit_jobs = [j for j in scored_jobs if (j.score or 0) >= 5]
 
@@ -137,14 +141,18 @@ async def run_score_audit(
             if any("fully Japanese" in i for i in issues):
                 old_score = job.score
                 job.score = min(job.score or 0, 4)
-                job.score_reason = f"[AUDIT: adjusted {old_score}→{job.score}] {job.score_reason or ''}"
+                job.score_reason = (
+                    f"[AUDIT: adjusted {old_score}→{job.score}] {job.score_reason or ''}"
+                )
                 db.upsert_job(job)
                 results["scores_adjusted"] += 1
 
             elif any("hallucinated" in i for i in issues):
                 old_score = job.score
                 job.score = max(1, (job.score or 0) - 2)
-                job.score_reason = f"[AUDIT: adjusted {old_score}→{job.score}] {job.score_reason or ''}"
+                job.score_reason = (
+                    f"[AUDIT: adjusted {old_score}→{job.score}] {job.score_reason or ''}"
+                )
                 db.upsert_job(job)
                 results["scores_adjusted"] += 1
 

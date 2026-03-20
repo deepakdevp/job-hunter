@@ -71,9 +71,7 @@ def run_init(answers: dict) -> Path:
         },
     }
 
-    (config_dir / "profile.json").write_text(
-        json.dumps(profile, indent=4) + "\n", encoding="utf-8"
-    )
+    (config_dir / "profile.json").write_text(json.dumps(profile, indent=4) + "\n", encoding="utf-8")
 
     # --- .env ---
     provider = answers["llm_provider"]
