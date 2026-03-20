@@ -19,5 +19,13 @@ def get_provider(provider_name: str, *, api_key: str, model: str) -> LLMProvider
         from job_hunter.llm.claude import ClaudeProvider
 
         return ClaudeProvider(api_key=api_key, model=model)
+    elif provider_name == "openai":
+        from job_hunter.llm.openai import OpenAIProvider
+
+        return OpenAIProvider(api_key=api_key, model=model)
+    elif provider_name == "ollama":
+        from job_hunter.llm.ollama import OllamaProvider
+
+        return OllamaProvider(model=model)
     else:
         raise ValueError(f"Unknown LLM provider: {provider_name}")
