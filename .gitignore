@@ -1,17 +1,30 @@
+# Secrets & personal data
+.env
+config/.env
+config/profile.json
+config/*.db
+config/output/
+config/japan_output/
+config/sessions/
+config/deep_research_results.tsv
+config/deep_research_program.md
+config/.japan_notion_db_id
+
+# macOS
+.DS_Store
+
+# Python
 __pycache__/
 *.pyc
-.env
 *.egg-info/
 dist/
 build/
 .venv/
 .pytest_cache/
-output/
-*.db
-sessions/
 .ruff_cache/
+
+# Generated
 *.pdf
 
-# Personal data — never commit real profile or credentials
-config/profile.json
+# Personal data
 docs/research/deepak-profile-master.md
