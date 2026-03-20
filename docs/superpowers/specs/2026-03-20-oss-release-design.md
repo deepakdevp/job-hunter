@@ -6,7 +6,7 @@
 **Target audience:** Developers/engineers who can run CLI tools + contributors who want to add scrapers/strategies.
 **Timeline:** 2 weeks. Launch as v0.1.0.
 **Approach:** Solid Launch — security cleanup + repo essentials + key architecture fixes in one batch.
-**Codebase:** 86 Python files (57 source + 29 test), ~11.4K LOC total.
+**Codebase:** 86 Python files (54 source + 31 test + 1 standalone runner), ~11.4K LOC total.
 
 ---
 
@@ -265,7 +265,7 @@ New flow:
 
 ### 4d. Refactor run_japan.py
 
-`run_japan.py` is 684 lines with significant autoresearch functionality (source research, data validation, score audit, resume audit, deep research loop) that does not exist in the current `hunt run` / `pipeline.py`.
+`run_japan.py` is ~680 lines with significant autoresearch functionality (source research, data validation, score audit, resume audit, deep research loop) that does not exist in the current `hunt run` / `pipeline.py`.
 
 **Scope decision:** Autoresearch is included in v0.1 — it's a key differentiator. The refactor:
 
@@ -310,7 +310,6 @@ docs/
 **getting-started.md** covers three paths:
 1. **Quickest (Ollama):** Zero API keys. Install → init → discover → score → export csv.
 2. **Full pipeline (Gemini/OpenAI):** With API key. Adds tailor → sync notion.
-3. **Docker:** `docker compose run job-hunter init` for one-command setup.
 
 **architecture.md** includes:
 - ASCII pipeline diagram
@@ -343,7 +342,7 @@ docs/
 ## 7. Prerequisites
 
 Before starting the 2-week clock:
-- **Verify Phase 6 (Notion sync) completion.** The CLI has sync commands wired up and `notion/sync.py` + `notion/client.py` exist. Confirm `hunt sync push` and `hunt sync pull` work end-to-end, or explicitly mark Notion sync as "beta" in docs.
+- **Assess Phase 6 (Notion sync) status.** Phase 6.1 (client) is in-progress; 6.2-6.5 are pending. The CLI has sync commands wired up and `notion/sync.py` + `notion/client.py` exist and work for push sync (tested in production). Notion sync will be marked "beta" for v0.1 — document what works (push) and what's incomplete (pull, Drive upload). This is not a blocker.
 
 ## 8. Two-Week Execution Plan
 
