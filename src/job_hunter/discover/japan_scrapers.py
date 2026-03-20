@@ -117,43 +117,49 @@ class GaijinPotScraper(BaseScraper):
 
     async def scrape(self, query: str = "", location: str = "", max_results: int = 50) -> list[Job]:
         jobs = []
-        url = self.base_url
+        # function=7000 is IT/Internet/Telecom category
+        params = "function=7000&employment_terms=full-time&order_by=latest"
         if query:
-            url = f"{self.base_url}/search?keyword={quote_plus(query)}"
+            params += f"&keyword={quote_plus(query)}"
+        url = f"{self.base_url}/en/job?{params}"
         try:
             html = await self._fetch(url)
             soup = BeautifulSoup(html, "html.parser")
 
-            listings = soup.select("a[href*='/job/']")
+            # Job links follow /en/job/{numeric_id} pattern
+            listings = soup.select("a[href*='/en/job/']")
             seen = set()
 
             for item in listings[:max_results * 2]:
                 href = item.get("href", "")
                 if not href or href in seen:
                     continue
-                if not href.startswith("http"):
-                    href = urljoin(self.base_url, href)
-                if "/job/" not in href:
+                # Strip query params from href for dedup
+                clean_href = href.split("?")[0]
+                if not clean_href.startswith("http"):
+                    clean_href = urljoin(self.base_url, clean_href)
+                # Must be an individual job page (has numeric ID)
+                if clean_href.rstrip("/") == f"{self.base_url}/en/job":
                     continue
-                seen.add(href)
+                if clean_href in seen:
+                    continue
+                seen.add(clean_href)
 
                 title = item.get_text(strip=True) or "Unknown"
-                company_el = item.find_next(class_=re.compile(r"company|employer", re.I))
-                company = company_el.get_text(strip=True) if company_el else "Unknown"
-                location_el = item.find_next(class_=re.compile(r"location", re.I))
-                loc = location_el.get_text(strip=True) if location_el else "Japan"
+                if len(title) < 3 or title.lower() in ("unknown", "post jobs", "apply"):
+                    continue
 
                 jobs.append(
                     Job(
-                        url=href,
+                        url=clean_href,
                         title=title,
-                        company=company,
-                        location=loc,
+                        company="Unknown",  # Parsed during enrichment
+                        location="Japan",
                         source="gaijinpot",
                     )
                 )
 
-            logger.info(f"GaijinPot: found {len(jobs)} jobs")
+            logger.info(f"GaijinPot: found {len(jobs)} IT jobs")
         except Exception as e:
             logger.error(f"GaijinPot scrape failed: {e}")
         return jobs[:max_results]

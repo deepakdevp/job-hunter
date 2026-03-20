@@ -20,10 +20,10 @@ def push_jobs_to_notion(
 
     Returns (created_count, updated_count).
     """
-    # Get all jobs that should be synced (scored or better)
+    # Get all jobs that should be synced
     all_jobs = []
-    for status in ("scored", "tailored", "synced", "applied", "reviewing",
-                   "phone_screen", "interview", "offer"):
+    for status in ("new", "enriched", "scored", "tailored", "synced", "applied",
+                   "reviewing", "phone_screen", "interview", "offer"):
         all_jobs.extend(db.get_jobs_by_status(status))
 
     total = len(all_jobs)
@@ -35,12 +35,17 @@ def push_jobs_to_notion(
         resume_url = None
         cover_letter_url = None
 
-        # Upload PDFs to Drive if available
+        # Upload PDFs to Drive if available, otherwise use local file:// links
         if drive:
             if job.resume_path and Path(job.resume_path).exists():
                 resume_url = drive.upload_resume(Path(job.resume_path))
             if job.cover_letter_path and Path(job.cover_letter_path).exists():
                 cover_letter_url = drive.upload_cover_letter(Path(job.cover_letter_path))
+        else:
+            if job.resume_path and Path(job.resume_path).exists():
+                resume_url = Path(job.resume_path).as_uri()
+            if job.cover_letter_path and Path(job.cover_letter_path).exists():
+                cover_letter_url = Path(job.cover_letter_path).as_uri()
 
         try:
             if job.notion_page_id:

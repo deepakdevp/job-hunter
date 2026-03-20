@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import httpx
 from notion_client import Client
 
 from job_hunter.database import Job
@@ -61,9 +62,52 @@ DATABASE_PROPERTIES = {
     "Found Date": {"date": {}},
     "Resume PDF": {"url": {}},
     "Cover Letter": {"url": {}},
+    "Country": {
+        "select": {
+            "options": [
+                {"name": "Japan", "color": "red"},
+                {"name": "Germany", "color": "yellow"},
+                {"name": "Netherlands", "color": "orange"},
+                {"name": "UK", "color": "blue"},
+                {"name": "Europe", "color": "purple"},
+                {"name": "Remote", "color": "green"},
+                {"name": "India", "color": "brown"},
+                {"name": "Other", "color": "gray"},
+            ]
+        }
+    },
+    "Visa Mentioned": {"checkbox": {}},
     "Tags": {"multi_select": {"options": []}},
     "Notes": {"rich_text": {}},
 }
+
+
+def _extract_country(location: str) -> str:
+    """Extract country from a location string."""
+    loc = location.lower().strip()
+    # Japanese locations
+    if any(x in loc for x in ("japan", "tokyo", "osaka", "jp", "yokohama", "fukuoka",
+                                "nagoya", "kyoto", "shibuya", "shinjuku", "minato",
+                                "meguro", "sumida", "chiyoda", "千", "渋谷", "大手町",
+                                "高輪", "千駄", "港区", "新宿")):
+        return "Japan"
+    if any(x in loc for x in ("germany", "berlin", "munich", "frankfurt", "hamburg", "deutschland")):
+        return "Germany"
+    if any(x in loc for x in ("netherlands", "amsterdam", "rotterdam", "den haag", "eindhoven", "nederland")):
+        return "Netherlands"
+    if any(x in loc for x in ("uk", "united kingdom", "london", "manchester", "edinburgh", "cambridge", "england", "scotland")):
+        return "UK"
+    if any(x in loc for x in ("france", "paris", "spain", "madrid", "barcelona", "italy", "rome", "milan",
+                                "sweden", "stockholm", "ireland", "dublin", "europe", "switzerland", "zurich",
+                                "austria", "vienna", "poland", "warsaw", "denmark", "copenhagen",
+                                "finland", "helsinki", "norway", "oslo", "portugal", "lisbon", "prague",
+                                "belgium", "brussels")):
+        return "Europe"
+    if any(x in loc for x in ("remote", "anywhere", "worldwide", "global", "work from home")):
+        return "Remote"
+    if any(x in loc for x in ("india", "bangalore", "mumbai", "delhi", "hyderabad", "pune", "gurugram", "noida", "chennai")):
+        return "India"
+    return "Other"
 
 
 class NotionJobDB:
@@ -71,19 +115,32 @@ class NotionJobDB:
 
     def __init__(self, token: str, database_id: str | None = None):
         self.client = Client(auth=token)
+        self._token = token
         self.database_id = database_id
 
-    def create_database(self, parent_page_id: str) -> str:
+    def create_database(self, parent_page_id: str, title: str = DATABASE_TITLE) -> str:
         """Create the Job Hunter database under a parent page.
 
-        Returns the database ID.
+        Uses raw HTTP because notion-client v3 drops 'properties' from
+        databases.create (breaking change for API version 2025-09-03).
         """
-        response = self.client.databases.create(
-            parent={"type": "page_id", "page_id": parent_page_id},
-            title=[{"type": "text", "text": {"content": DATABASE_TITLE}}],
-            properties=DATABASE_PROPERTIES,
+        response = httpx.post(
+            "https://api.notion.com/v1/databases",
+            headers={
+                "Authorization": f"Bearer {self._token}",
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+            },
+            json={
+                "parent": {"type": "page_id", "page_id": parent_page_id},
+                "title": [{"type": "text", "text": {"content": title}}],
+                "properties": DATABASE_PROPERTIES,
+            },
+            timeout=60,
         )
-        self.database_id = response["id"]
+        response.raise_for_status()
+        data = response.json()
+        self.database_id = data["id"]
         logger.info(f"Created Notion database: {self.database_id}")
         return self.database_id
 
@@ -93,9 +150,10 @@ class NotionJobDB:
             # Search for databases with our title
             response = self.client.search(
                 query=DATABASE_TITLE,
-                filter={"property": "object", "value": "database"},
             )
             for result in response.get("results", []):
+                if result.get("object") != "database":
+                    continue
                 title_parts = result.get("title", [])
                 title = "".join(t.get("plain_text", "") for t in title_parts)
                 if title == DATABASE_TITLE:
@@ -178,8 +236,11 @@ class NotionJobDB:
             "Location": {"rich_text": [{"text": {"content": job.location[:2000]}}]},
             "Status": {"select": {"name": job.status or "new"}},
             "Source": {"select": {"name": job.source or "unknown"}},
+            "Country": {"select": {"name": _extract_country(job.location)}},
         }
 
+        if job.visa_sponsorship is not None:
+            props["Visa Mentioned"] = {"checkbox": bool(job.visa_sponsorship)}
         if job.url:
             props["Job URL"] = {"url": job.url}
         if job.apply_url:

@@ -1,0 +1,61 @@
+searches:
+  # ── Japan / Tokyo — JobSpy boards ──────────────────────────────
+  - query: "software engineer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 100
+
+  - query: "full stack developer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 100
+
+  - query: "frontend engineer react"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "backend engineer python"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "AI engineer"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "LLM engineer"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "agentic AI"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "python developer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "react developer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "typescript engineer"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "software engineer visa sponsorship"
+    location: "Tokyo, Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50
+
+  - query: "GenAI engineer"
+    location: "Japan"
+    boards: ["indeed", "linkedin"]
+    max_results: 50

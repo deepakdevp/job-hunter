@@ -23,15 +23,26 @@ class GeminiProvider(LLMProvider):
         if json_mode:
             config["response_mime_type"] = "application/json"
 
+        loop = asyncio.get_event_loop()
         last_error = None
         for attempt, delay in enumerate(self._retry_delays):
             try:
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=prompt,
-                    config=config,
+                response = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        None,
+                        lambda: self.client.models.generate_content(
+                            model=self.model,
+                            contents=prompt,
+                            config=config,
+                        ),
+                    ),
+                    timeout=90,
                 )
                 return response.text
+            except asyncio.TimeoutError:
+                logger.warning(f"Gemini call timed out (attempt {attempt + 1})")
+                last_error = TimeoutError("Gemini API call timed out")
+                continue
             except Exception as e:
                 last_error = e
                 if "429" in str(e) or "ResourceExhausted" in type(e).__name__:

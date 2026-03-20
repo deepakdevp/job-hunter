@@ -24,6 +24,7 @@ class FillResult:
 
 # Each tuple is (compiled regex pattern, platform name).
 PLATFORM_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"indeed\.com"), "indeed"),
     (re.compile(r"myworkdayjobs\.com"), "workday"),
     (re.compile(r"boards\.greenhouse\.io"), "greenhouse"),
     (re.compile(r"jobs\.lever\.co"), "lever"),

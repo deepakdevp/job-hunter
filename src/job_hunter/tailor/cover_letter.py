@@ -75,8 +75,8 @@ def validate_cover_letter(
             message=f"Cover letter too long: {word_count} words (max {word_limit})",
         ))
 
-    # Must mention company
-    if company_name and company_name.lower() not in text.lower():
+    # Must mention company (skip for unknown companies)
+    if company_name and company_name.lower() not in ("unknown", "") and company_name.lower() not in text.lower():
         extra_issues.append(ValidationIssue(
             severity="error",
             category="structure",

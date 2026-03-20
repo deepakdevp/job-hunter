@@ -1,0 +1,159 @@
+# Workday employers with Japan offices + Japan-based companies
+# These are filtered to Japan location in the scraper
+
+employers:
+
+  # ── Japan-Based Companies ─────────────────────────────────────
+  rakuten:
+    name: "Rakuten"
+    tenant: "rakuten"
+    site_id: "RakutenInc"
+    base_url: "https://rakuten.wd1.myworkdayjobs.com"
+    region: "japan"
+    location_filter: "Japan"
+
+  # ── Global Tech with Japan Offices ────────────────────────────
+  nvidia:
+    name: "NVIDIA"
+    tenant: "nvidia"
+    site_id: "NVIDIAExternalCareerSite"
+    base_url: "https://nvidia.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  salesforce:
+    name: "Salesforce"
+    tenant: "salesforce"
+    site_id: "External_Career_Site"
+    base_url: "https://salesforce.wd12.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  cisco:
+    name: "Cisco"
+    tenant: "cisco"
+    site_id: "Cisco_Careers"
+    base_url: "https://cisco.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  adobe:
+    name: "Adobe"
+    tenant: "adobe"
+    site_id: "external_experienced"
+    base_url: "https://adobe.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  servicenow:
+    name: "ServiceNow"
+    tenant: "servicenow"
+    site_id: "ServiceNowCareers"
+    base_url: "https://servicenow.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  paypal:
+    name: "PayPal"
+    tenant: "paypal"
+    site_id: "jobs"
+    base_url: "https://paypal.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  mastercard:
+    name: "Mastercard"
+    tenant: "mastercard"
+    site_id: "CorporateCareers"
+    base_url: "https://mastercard.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  docusign:
+    name: "DocuSign"
+    tenant: "docusign"
+    site_id: "External"
+    base_url: "https://docusign.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  intel:
+    name: "Intel"
+    tenant: "intel"
+    site_id: "External"
+    base_url: "https://intel.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  # ── Additional Japan-Presence Companies ───────────────────────
+  indeed_hq:
+    name: "Indeed"
+    tenant: "indeed"
+    site_id: "indeed"
+    base_url: "https://indeed.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  mercari:
+    name: "Mercari"
+    tenant: "mercari"
+    site_id: "Mercari"
+    base_url: "https://mercari.wd3.myworkdayjobs.com"
+    region: "japan"
+    location_filter: "Japan"
+
+  line_yahoo:
+    name: "LY Corporation (LINE/Yahoo)"
+    tenant: "lygroup"
+    site_id: "LY"
+    base_url: "https://lygroup.wd3.myworkdayjobs.com"
+    region: "japan"
+    location_filter: "Japan"
+
+  stripe:
+    name: "Stripe"
+    tenant: "stripe"
+    site_id: "Stripe"
+    base_url: "https://stripe.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  datadog:
+    name: "Datadog"
+    tenant: "datadog"
+    site_id: "Datadog"
+    base_url: "https://datadog.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  atlassian:
+    name: "Atlassian"
+    tenant: "atlassian"
+    site_id: "External_Careers"
+    base_url: "https://atlassian.wd1.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  twitter:
+    name: "X (Twitter)"
+    tenant: "twitter"
+    site_id: "External"
+    base_url: "https://twitter.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  mongodb:
+    name: "MongoDB"
+    tenant: "mongodb"
+    site_id: "MongoDB"
+    base_url: "https://mongodb.wd5.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"
+
+  pwc:
+    name: "PwC"
+    tenant: "pwc"
+    site_id: "Global_Experienced_Careers"
+    base_url: "https://pwc.wd3.myworkdayjobs.com"
+    region: "global"
+    location_filter: "Japan"

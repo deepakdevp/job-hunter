@@ -73,8 +73,9 @@ def _check_filler_words(text: str, mode: ValidationMode) -> list[ValidationIssue
     issues = []
     text_lower = text.lower()
     for word in BANNED_FILLER_WORDS:
-        if word.lower() in text_lower:
-            severity = "error" if mode == ValidationMode.STRICT else "warning"
+        pattern = r'\b' + re.escape(word.lower()) + r'\b'
+        if re.search(pattern, text_lower):
+            severity = "warning"  # filler words are warnings, not blockers
             issues.append(ValidationIssue(
                 severity=severity,
                 category="filler",

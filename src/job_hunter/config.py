@@ -16,6 +16,7 @@ class Config:
     gemini_api_key: str
     notion_token: str
     notion_page_id: str
+    notion_database_id: str = ""
     anthropic_api_key: str = ""
     capsolver_api_key: str = ""
     llm_provider: str = "gemini"
@@ -63,6 +64,7 @@ def load_config(config_dir: Path | None = None) -> Config:
         gemini_api_key=os.environ.get("GEMINI_API_KEY", ""),
         notion_token=os.environ.get("NOTION_TOKEN", ""),
         notion_page_id=os.environ.get("NOTION_PAGE_ID", ""),
+        notion_database_id=os.environ.get("NOTION_DATABASE_ID", ""),
         anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
         capsolver_api_key=os.environ.get("CAPSOLVER_API_KEY", ""),
         llm_provider=os.environ.get("LLM_PROVIDER", "gemini"),

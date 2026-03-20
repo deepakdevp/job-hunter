@@ -1,0 +1,163 @@
+%-------------------------
+% Master Resume - Deepak Dev Panwar
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\ifdefined\pdfgentounicode
+\input{glyphtounicode}
+\fi
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\ifdefined\pdfgentounicode
+\pdfgentounicode=1
+\fi
+
+\newcommand{\resumeItem}[1]{\item\small{{#1 \vspace{-2pt}}}}
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge \scshape Deepak Dev Panwar} \\ \vspace{4pt}
+   \vspace{2pt}
+    \small Software Engineer \\ \vspace{2pt}
+    \href{mailto:deepakdevp@gmail.com}{\underline{deepakdevp@gmail.com}}  $|$
+    \href{https://www.deepakdevp.dev/}{\underline{deepakdevp.dev}} $|$
+    \href{https://www.linkedin.com/in/deepak-dev-panwar-166187135/}{linkedin} $|$ +919467868438
+
+\end{center}
+
+%-----------SUMMARY-----------
+\section*{Summary}
+Proactive Software Engineer with 5+ years of experience architecting and building scalable, full-stack solutions. Expert in React, Python (Django), and Java, with a strong focus on developing agentic AI workflows and integrating LLMs. Proven leader in unifying enterprise systems, spearheading design systems, and driving AI adoption within engineering teams. Actively learning advanced Agentic AI development and preparing to relocate to Japan to contribute to product-focused engineering teams.
+
+\section*{Technical Skills}
+\resumeSubHeadingListStart
+\item{
+\textbf{Frontend:} React, TypeScript, Next.js \\
+\textbf{Backend:} Django (Python), Spring Boot (Java), Node.js \\
+\textbf{AI \& Machine Learning:} LangChain, LlamaIndex, Agentic AI Development, RAG Architecture, Prompt Engineering, OpenAI API, Claude Code, Codex, Antigravity \\
+\textbf{Databases \& Messaging:} PostgreSQL, MongoDB, Redis, Kafka, ElasticSearch, Weaviate\\
+\textbf{Cloud \& DevOps:} AWS (EC2, Lambda, RDS, S3), Docker, Kubernetes, Jenkins \\
+\textbf{Testing \& Tools:} Playwright, Storybook, Mixpanel, Sentry, New Relic, Swagger \\
+\textbf{Workflow:} Git, JIRA, Confluence, Figma, Agile (Scrum)
+}
+\resumeSubHeadingListEnd
+
+%-----------EXPERIENCE-----------
+\section*{Experience}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Medikabazaar}{Apr 2022 -- Present}
+{SDE 2}{Gurugram, India}
+\resumeItemListStart
+\resumeItem{Architected a centralized User Access Management (UAM) system from scratch, implementing \textbf{ SSO with OpenID connect}  to unify authentication for 8+ enterprise platforms; improved security compliance and slashed login-related support tickets by 40\%.}
+\resumeItem{Spearheaded technical leadership for a 5-engineer squad, defining high-level architecture, conducting rigorous code reviews, and collaborating with the \textbf{CTO's office} to align technical roadmaps with long-term business initiatives.}
+\resumeItem{Led the development of core Fintech Platform microservices (Accounts Payable, Invoicing, Payment Workflows) using \textbf{React, Python,  Django}; engineered automation scripts that streamlined 80\% of manual invoicing processes.}
+\resumeItem{Engineered an AI-driven document processing engine leveraging \textbf{LLMs} for structured data extraction; partnered with Finance to eliminate 80\% of manual data entry.}
+\resumeItem{Built \textbf{MBARC}, an on-demand medical asset management marketplace and service ecosystem; led a 4-developer team to integrate AMC/CMC tracking, spare parts procurement, and equipment recycling via 2 \textbf{Ionic mobile apps} and a React/Django suite, achieving 90\% field adoption.}
+\resumeItem{Optimized Seller Management Platform workflows by automating compliance checks and document validation, reducing vendor onboarding time by 90\% and accelerating the acquisition pipeline for the operations team.}
+\resumeItem{Architected a company-wide React Design System and component library published on \textbf{NPM}; utilized \textbf{Storybook and Chromatic} to standardize UI/UX, reducing frontend development cycles by 50\% across 12 product teams.}
+\resumeItem{Collaborated on the implementation of CI/CD pipelines via \textbf{Jenkins} and \textbf{Docker} on \textbf{AWS}; supported the integration of real-time observability using \textbf{Kafka and New Relic} to improve deployment reliability and system uptime.}
+\resumeItem{Bridged the gap between Design and Engineering by translating complex Figma specifications into high-performance, reusable React components, ensuring pixel-perfect consistency across the entire enterprise ecosystem.}
+\resumeItem{Leading the development of \textbf{agentic AI workflows} and custom tools, while guiding my team and the wider organization in adopting \textbf{AI processes and best practices.}}
+\resumeItem{\textit{Tech Stack: React, TypeScript, Django, Java Spring Boot, PostgreSQL, Redis, Kafka, AWS, Docker, Jenkins}}
+\resumeItemListEnd
+
+\resumeSubheading
+{DrishteAI}{Jul 2020 -- Feb 2022}
+{Software Engineer}{Hyderabad, India}
+\resumeItemListStart
+\resumeItem{\textbf{Architected an end-to-end offline advertisement platform}—comparable to Google Ads—orchestrating campaigns across city-wide screens via NVIDIA Jetson Nano edge devices. Integrated computer vision models into backend workflows for precise content targeting and viewer analytics.}
+\resumeItem{\textbf{Led a 3-person web development team} to design and deploy a complete ecosystem including real-time analytics dashboards, annotation tools, and campaign portals for 10+ enterprise clients using React, Material-UI, and Django.}
+\resumeItem{
+     \textbf{Developed a custom high-performance video player} for Jetson Nano using Vanilla JS, WebSockets, and Django. \textbf{Authored Python-based orchestration scripts on Linux to automate local ad scheduling, health monitoring, and seamless content synchronization on edge devices.}
+   }
+\resumeItem{\textbf{Designed and developed Upasthiti}, a facial recognition-based attendance system integrating computer vision models with React and Django. Successfully deployed for 10+ clients, automating attendance tracking with high accuracy.}
+\resumeItem{
+\textbf{Managed end-to-end AWS cloud deployments} and Docker-based infrastructure. \textbf{Engineered Python automation scripts for server-side campaign management, data transcoding, and backend workflow optimization} to ensure high availability and scalability.
+}
+\resumeItem{\textit{Tech Stack: React, Django, PostgreSQL, WebSockets, AWS, Docker, NVIDIA Jetson}}
+\resumeItemListEnd
+
+\resumeSubheading
+{DrishteAI (Internship)}{Jan 2020 -- Jun 2020}
+{Software Engineer Intern}{Hyderabad, India}
+\resumeItemListStart
+\resumeItem{Created interactive ad performance dashboards with React and Django, improving campaign monitoring capabilities for internal teams.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------TECHNICAL INTERESTS-----------
+\section*{Technical Interests \& Active Learning}
+\resumeSubHeadingListStart
+\item{
+\textbf{Generative AI:} Actively learning Agentic AI Development. Building RAG (Retrieval-Augmented Generation) applications using LangChain and vector databases (Pinecone). Experimenting with OpenAI API integration, prompt engineering, and Model Context Protocol (MCP) servers for LLM orchestration. Exploring practical applications of AI tooling in engineering workflows.
+}
+\resumeSubHeadingListEnd
+
+%-----------EDUCATION-----------
+\section*{Education}
+\resumeSubHeadingListStart
+\resumeSubheading
+{Bennett University}{2016 -- 2020}
+{Bachelor of Technology, Computer Science (Specialization in AI/ML)}{Greater Noida, India}
+\resumeSubHeadingListEnd
+
+%-----------ADDITIONAL-----------
+\section*{Additional Information}
+\resumeSubHeadingListStart
+\item{
+\textbf{Languages:} English (Professional), Japanese (Basic -- actively preparing for JLPT N5)
+}
+\resumeSubHeadingListEnd
+
+\end{document}

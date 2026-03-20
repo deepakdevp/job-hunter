@@ -76,7 +76,7 @@ async def tailor_resume(
 
     for attempt in range(MAX_RETRIES + 1):
         try:
-            response = await llm.generate(prompt)
+            response = await llm.generate(prompt, max_tokens=8192)
             tailored_latex = _clean_llm_response(response)
 
             if not tailored_latex:

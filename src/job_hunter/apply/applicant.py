@@ -14,6 +14,7 @@ from job_hunter.apply.strategies.ashby import AshbyFormFiller
 from job_hunter.apply.strategies.base import BaseFormFiller, FillResult, detect_platform
 from job_hunter.apply.strategies.generic import GenericFormFiller
 from job_hunter.apply.strategies.greenhouse import GreenhouseFormFiller
+from job_hunter.apply.strategies.indeed import IndeedFormFiller
 from job_hunter.apply.strategies.japan import (
     CareerCrossFormFiller,
     GreenFormFiller,
@@ -52,6 +53,7 @@ class ApplyResult:
 
 
 STRATEGY_MAP: dict[str, type[BaseFormFiller]] = {
+    "indeed": IndeedFormFiller,
     "workday": WorkdayFormFiller,
     "greenhouse": GreenhouseFormFiller,
     "lever": LeverFormFiller,
