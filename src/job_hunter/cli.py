@@ -22,13 +22,17 @@ def _setup_logging(verbose: bool):
 @click.group()
 @click.version_option(version=__version__)
 @click.option("-v", "--verbose", is_flag=True, help="Enable debug logging")
-@click.option("--config-dir", type=click.Path(exists=True), default=".", help="Config directory")
+@click.option("--config-dir", type=click.Path(), default=None, help="Config directory")
+@click.option("--data-dir", type=click.Path(), default=None, help="Data directory")
 @click.pass_context
-def cli(ctx, verbose, config_dir):
+def cli(ctx, verbose, config_dir, data_dir):
     """Job Hunter — discover, score, tailor, apply."""
+    from job_hunter.config import get_config_dir, get_data_dir
+
     _setup_logging(verbose)
     ctx.ensure_object(dict)
-    ctx.obj["config_dir"] = Path(config_dir)
+    ctx.obj["config_dir"] = get_config_dir(Path(config_dir) if config_dir else None)
+    ctx.obj["data_dir"] = get_data_dir(Path(data_dir) if data_dir else None)
     ctx.obj["verbose"] = verbose
 
 
@@ -70,8 +74,8 @@ def doctor(ctx):
 @click.pass_context
 def status(ctx):
     """Show pipeline statistics."""
-    config_dir = ctx.obj["config_dir"]
-    db_path = config_dir / "jobs.db"
+    data_dir = ctx.obj["data_dir"]
+    db_path = data_dir / "jobs.db"
     if not db_path.exists():
         console.print("[yellow]No jobs database found. Run 'hunt discover' first.[/]")
         return
@@ -104,7 +108,9 @@ def discover(ctx, workers, skip_jobspy, skip_japan, skip_workday):
     from job_hunter.discover.dedup import dedup_jobs
 
     config = load_config(ctx.obj["config_dir"])
-    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+    data_dir = ctx.obj["data_dir"]
+    data_dir.mkdir(parents=True, exist_ok=True)
+    db = JobDB(data_dir / "jobs.db")
     existing_urls = db.get_all_urls()
 
     all_jobs = []
@@ -171,7 +177,7 @@ def enrich(ctx, limit, tier1_only):
     from job_hunter.enrich.runner import run_enrichment
 
     config = load_config(ctx.obj["config_dir"])
-    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+    db = JobDB(ctx.obj["data_dir"] / "jobs.db")
 
     unenriched = db.get_unenriched_jobs()
     count = min(len(unenriched), limit) if limit else len(unenriched)
@@ -226,7 +232,7 @@ def score(ctx):
     from job_hunter.llm.base import get_provider
 
     config = load_config(ctx.obj["config_dir"])
-    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
+    db = JobDB(ctx.obj["data_dir"] / "jobs.db")
 
     unscored = db.get_unscored_jobs()
     if not unscored:
@@ -291,8 +297,9 @@ def tailor(ctx, tailor_all, job_url, validation):
     from job_hunter.llm.base import get_provider
 
     config = load_config(ctx.obj["config_dir"])
-    db = JobDB(ctx.obj["config_dir"] / "jobs.db")
-    output_dir = ctx.obj["config_dir"] / "output"
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+    output_dir = data_dir / "output"
 
     mode = ValidationMode(validation)
 
@@ -433,8 +440,8 @@ def sync_push(ctx, drive_creds):
         console.print("[red]Set NOTION_TOKEN and NOTION_DATABASE_ID in .env[/]")
         raise SystemExit(1)
 
-    config_dir = ctx.obj["config_dir"]
-    db = JobDB(config_dir / "jobs.db")
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
     notion = NotionJobDB(token=token, database_id=db_id)
 
     drive = None
@@ -475,8 +482,8 @@ def sync_pull(ctx):
         console.print("[red]Set NOTION_TOKEN and NOTION_DATABASE_ID in .env[/]")
         raise SystemExit(1)
 
-    config_dir = ctx.obj["config_dir"]
-    db = JobDB(config_dir / "jobs.db")
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
     notion = NotionJobDB(token=token, database_id=db_id)
 
     with Progress(
@@ -531,11 +538,13 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
     except Exception:
         pass
 
+    data_dir = ctx.obj["data_dir"]
+
     applicant = Applicant(
         profile=profile,
-        session_dir=config_dir / "sessions",
+        session_dir=data_dir / "sessions",
         llm=llm,
-        log_path=config_dir / "output" / "apply_log.json",
+        log_path=data_dir / "output" / "apply_log.json",
         dry_run=dry_run,
     )
 
@@ -548,7 +557,7 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
 
     from job_hunter.database import JobDB
 
-    db = JobDB(config_dir / "jobs.db")
+    db = JobDB(data_dir / "jobs.db")
 
     # Single job mode
     if job_url:
@@ -635,6 +644,7 @@ def run_cmd(ctx, run_apply, skip_discover, dry_run):
     from job_hunter.pipeline import run_pipeline
 
     config_dir = ctx.obj["config_dir"]
+    data_dir = ctx.obj["data_dir"]
 
     console.print("[bold]Starting pipeline run...[/]\n")
 
@@ -643,6 +653,7 @@ def run_cmd(ctx, run_apply, skip_discover, dry_run):
         skip_discover=skip_discover,
         run_apply=run_apply,
         dry_run=dry_run,
+        data_dir=data_dir,
     )
 
     table = Table(title="Run Summary")

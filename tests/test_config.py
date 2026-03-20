@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from job_hunter.config import load_config, Config
+from job_hunter.config import load_config, Config, get_config_dir, get_data_dir
 
 
 @pytest.fixture
@@ -83,3 +83,31 @@ def test_config_loads_sites(config_dir):
     (config_dir / "sites.yaml").write_text(yaml.dump(sites))
     config = load_config(config_dir)
     assert "glassdoor" in config.sites_config["blocked"]["sites"]
+
+
+def test_default_config_dir_is_xdg(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    assert get_config_dir() == tmp_path / "job-hunter"
+
+
+def test_default_data_dir_is_xdg(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    assert get_data_dir() == tmp_path / "job-hunter"
+
+
+def test_config_dir_override(tmp_path):
+    assert get_config_dir(override=tmp_path) == tmp_path
+
+
+def test_data_dir_override(tmp_path):
+    assert get_data_dir(override=tmp_path) == tmp_path
+
+
+def test_default_config_dir_falls_back_to_home(monkeypatch):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    assert get_config_dir() == Path.home() / ".config" / "job-hunter"
+
+
+def test_default_data_dir_falls_back_to_home(monkeypatch):
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
+    assert get_data_dir() == Path.home() / ".local" / "share" / "job-hunter"

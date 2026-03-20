@@ -9,6 +9,24 @@ import yaml
 from dotenv import load_dotenv
 
 
+def get_config_dir(override: Path | None = None) -> Path:
+    """Resolve config directory: explicit override > XDG > ~/.config/job-hunter."""
+    if override:
+        return Path(override)
+    xdg = os.environ.get("XDG_CONFIG_HOME", "")
+    base = Path(xdg) if xdg else Path.home() / ".config"
+    return base / "job-hunter"
+
+
+def get_data_dir(override: Path | None = None) -> Path:
+    """Resolve data directory: explicit override > XDG > ~/.local/share/job-hunter."""
+    if override:
+        return Path(override)
+    xdg = os.environ.get("XDG_DATA_HOME", "")
+    base = Path(xdg) if xdg else Path.home() / ".local" / "share"
+    return base / "job-hunter"
+
+
 @dataclass
 class Config:
     profile: dict
@@ -25,11 +43,13 @@ class Config:
     validation_mode: str = "normal"
     employers: list[dict] = field(default_factory=list)
     sites_config: dict = field(default_factory=dict)
-    config_dir: Path = field(default_factory=lambda: Path.cwd())
+    config_dir: Path = field(default_factory=get_config_dir)
+    data_dir: Path = field(default_factory=get_data_dir)
 
 
-def load_config(config_dir: Path | None = None) -> Config:
-    config_dir = Path(config_dir) if config_dir else Path.cwd()
+def load_config(config_dir: Path | None = None, data_dir: Path | None = None) -> Config:
+    config_dir = get_config_dir(config_dir)
+    data_dir = get_data_dir(data_dir)
 
     env_path = config_dir / ".env"
     if env_path.exists():
@@ -74,4 +94,5 @@ def load_config(config_dir: Path | None = None) -> Config:
         employers=employers,
         sites_config=sites_config,
         config_dir=config_dir,
+        data_dir=data_dir,
     )
