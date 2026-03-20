@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ name }} — Resume</title>
+<style>
+/* Print-friendly reset */
+@page {
+    size: letter;
+    margin: 0.75in 0.85in;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    color: #1a1a1a;
+}
+
+h1 {
+    font-size: 20pt;
+    font-weight: 700;
+    letter-spacing: 0.5pt;
+    margin-bottom: 2pt;
+    color: #111;
+}
+
+h2 {
+    font-size: 11pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
+    color: #333;
+    border-bottom: 1.5pt solid #333;
+    padding-bottom: 2pt;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+}
+
+ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 3pt 0 6pt;
+}
+
+li {
+    position: relative;
+    padding-left: 12pt;
+    margin-bottom: 2pt;
+}
+
+li::before {
+    content: "\2022";
+    position: absolute;
+    left: 0;
+    color: #555;
+}
+
+p {
+    margin-bottom: 4pt;
+}
+
+.contact {
+    font-size: 9pt;
+    color: #555;
+    margin-bottom: 12pt;
+}
+
+/* Avoid page breaks inside sections */
+h2, ul, li {
+    page-break-inside: avoid;
+}
+
+@media print {
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+</style>
+</head>
+<body>
+<h1>{{ name }}</h1>
+
+{% for section in sections %}
+<h2>{{ section.heading }}</h2>
+{% if section.bullets %}
+<ul>
+{% for item in section.bullets %}
+    <li>{{ item }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% if section.text %}
+<p>{{ section.text }}</p>
+{% endif %}
+{% endfor %}
+
+</body>
+</html>

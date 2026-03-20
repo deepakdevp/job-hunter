@@ -38,8 +38,16 @@ def render_latex_to_pdf(
         # Try pdflatex first, then tectonic
         compiler = _find_compiler()
         if not compiler:
-            logger.error("No LaTeX compiler found. Install pdflatex or tectonic.")
-            return None
+            try:
+                from job_hunter.tailor.html_renderer import render_to_pdf as html_render
+
+                logger.info("No LaTeX compiler found — falling back to HTML renderer.")
+                return html_render(preamble, tailored_body, output_dir, job_url)
+            except ImportError:
+                logger.error(
+                    "No renderer available. Install pdflatex or pip install job-hunter[pdf]"
+                )
+                return None
 
         success = _compile_latex(compiler, tex_path, tmp_dir)
         if not success:

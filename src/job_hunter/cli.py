@@ -406,6 +406,54 @@ def tailor(ctx, tailor_all, job_url, validation):
     console.print(f"\n[green bold]Tailored {success}/{len(jobs)} resumes[/]")
 
 
+@cli.group("export")
+def export_group():
+    """Export jobs to CSV or JSON."""
+    pass
+
+
+@export_group.command("csv")
+@click.option("--output", "-o", required=True, type=click.Path(), help="Output CSV file path")
+@click.option("--min-score", default=0, type=int, help="Minimum score filter")
+@click.pass_context
+def export_csv_cmd(ctx, output, min_score):
+    """Export jobs to CSV file."""
+    from job_hunter.database import JobDB
+    from job_hunter.export import export_csv
+
+    data_dir = ctx.obj["data_dir"]
+    db_path = data_dir / "jobs.db"
+    if not db_path.exists():
+        console.print("[yellow]No jobs database found. Run 'hunt discover' first.[/]")
+        return
+
+    db = JobDB(db_path)
+    count = export_csv(db, Path(output), min_score=min_score)
+    db.close()
+    console.print(f"[green bold]Exported {count} jobs to {output}[/]")
+
+
+@export_group.command("json")
+@click.option("--output", "-o", required=True, type=click.Path(), help="Output JSON file path")
+@click.option("--min-score", default=0, type=int, help="Minimum score filter")
+@click.pass_context
+def export_json_cmd(ctx, output, min_score):
+    """Export jobs to JSON file."""
+    from job_hunter.database import JobDB
+    from job_hunter.export import export_json
+
+    data_dir = ctx.obj["data_dir"]
+    db_path = data_dir / "jobs.db"
+    if not db_path.exists():
+        console.print("[yellow]No jobs database found. Run 'hunt discover' first.[/]")
+        return
+
+    db = JobDB(db_path)
+    count = export_json(db, Path(output), min_score=min_score)
+    db.close()
+    console.print(f"[green bold]Exported {count} jobs to {output}[/]")
+
+
 @cli.group()
 def sync():
     """Notion sync commands."""
