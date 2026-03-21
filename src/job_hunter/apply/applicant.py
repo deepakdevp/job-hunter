@@ -117,7 +117,13 @@ class Applicant:
 
     async def apply_to_job(self, job: Job) -> ApplyResult:
         """Run the full browser automation flow for a single *job*."""
-        from playwright.async_api import async_playwright
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise ImportError(
+                "Auto-apply requires playwright. Install with:\n"
+                "  pip install job-hunter[apply]"
+            )
 
         url = job.apply_url or job.url
         platform = detect_platform(url)
@@ -199,7 +205,13 @@ class Applicant:
 
     async def login_and_save(self, domain: str) -> None:
         """Open a browser for manual login, then save the session on close."""
-        from playwright.async_api import async_playwright
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise ImportError(
+                "Auto-apply requires playwright. Install with:\n"
+                "  pip install job-hunter[apply]"
+            )
 
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=False)

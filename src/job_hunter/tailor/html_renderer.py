@@ -4,7 +4,12 @@ import hashlib
 import logging
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, BaseLoader
+try:
+    from jinja2 import Environment, FileSystemLoader, BaseLoader
+except ImportError:
+    Environment = None  # type: ignore[assignment,misc]
+    FileSystemLoader = None  # type: ignore[assignment]
+    BaseLoader = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +60,12 @@ def render_html_resume(name: str, sections: list[dict]) -> str:
     Returns:
         Rendered HTML string.
     """
+    if Environment is None:
+        raise ImportError(
+            "HTML resume rendering requires jinja2. Install with:\n"
+            "  pip install job-hunter[pdf]"
+        )
+
     # Try to load the external template first
     template_dir = Path(__file__).resolve().parents[3] / "config"
     template_file = template_dir / "resume_template.html"

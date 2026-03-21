@@ -12,15 +12,33 @@ class LLMProvider(ABC):
 
 def get_provider(provider_name: str, *, api_key: str, model: str) -> LLMProvider:
     if provider_name == "gemini":
-        from job_hunter.llm.gemini import GeminiProvider
+        try:
+            from job_hunter.llm.gemini import GeminiProvider
+        except ImportError:
+            raise ImportError(
+                "Gemini provider requires google-genai. Install with:\n"
+                "  pip install job-hunter[gemini]"
+            )
 
         return GeminiProvider(api_key=api_key, model=model)
     elif provider_name == "claude":
-        from job_hunter.llm.claude import ClaudeProvider
+        try:
+            from job_hunter.llm.claude import ClaudeProvider
+        except ImportError:
+            raise ImportError(
+                "Claude provider requires anthropic. Install with:\n"
+                "  pip install job-hunter[claude]"
+            )
 
         return ClaudeProvider(api_key=api_key, model=model)
     elif provider_name == "openai":
-        from job_hunter.llm.openai import OpenAIProvider
+        try:
+            from job_hunter.llm.openai import OpenAIProvider
+        except ImportError:
+            raise ImportError(
+                "OpenAI provider requires openai. Install with:\n"
+                "  pip install job-hunter[openai]"
+            )
 
         return OpenAIProvider(api_key=api_key, model=model)
     elif provider_name == "ollama":

@@ -4,8 +4,13 @@ import logging
 from pathlib import Path
 
 from job_hunter.database import JobDB
-from job_hunter.notion.client import NotionJobDB
-from job_hunter.notion.drive_uploader import DriveUploader
+
+try:
+    from job_hunter.notion.client import NotionJobDB
+    from job_hunter.notion.drive_uploader import DriveUploader
+except ImportError:
+    NotionJobDB = None  # type: ignore[assignment,misc]
+    DriveUploader = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 

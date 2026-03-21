@@ -4,7 +4,11 @@ import logging
 from typing import Any
 
 import httpx
-from notion_client import Client
+
+try:
+    from notion_client import Client
+except ImportError:
+    Client = None  # type: ignore[assignment,misc]
 
 from job_hunter.database import Job
 
@@ -196,6 +200,11 @@ class NotionJobDB:
     """Wrapper around Notion API for the Job Hunter database."""
 
     def __init__(self, token: str, database_id: str | None = None):
+        if Client is None:
+            raise ImportError(
+                "Notion sync requires notion-client. Install with:\n"
+                "  pip install job-hunter[notion]"
+            )
         self.client = Client(auth=token)
         self._token = token
         self.database_id = database_id

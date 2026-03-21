@@ -112,8 +112,18 @@ def discover(ctx, workers, skip_jobspy, skip_japan, skip_workday):
     """Scrape all configured job platforms."""
     from job_hunter.config import load_config
     from job_hunter.database import JobDB
-    from job_hunter.discover.jobspy_scraper import run_jobspy_search, parse_jobspy_results
     from job_hunter.discover.dedup import dedup_jobs
+
+    try:
+        from job_hunter.discover.jobspy_scraper import run_jobspy_search, parse_jobspy_results
+    except ImportError:
+        if not skip_jobspy:
+            console.print("[red]Job discovery requires python-jobspy. Install with:[/]")
+            console.print("[yellow]  pip install job-hunter\\[jobspy][/]")
+            raise SystemExit(1)
+        # If skipping jobspy, we don't need the import
+        run_jobspy_search = None  # type: ignore[assignment]
+        parse_jobspy_results = None  # type: ignore[assignment]
 
     config = load_config(ctx.obj["config_dir"])
     data_dir = ctx.obj["data_dir"]
@@ -467,7 +477,13 @@ def sync():
 def sync_init(ctx, page_id):
     """Initialize Notion database under a parent page."""
     import os
-    from job_hunter.notion.client import NotionJobDB
+
+    try:
+        from job_hunter.notion.client import NotionJobDB
+    except ImportError:
+        console.print("[red]Notion sync requires notion-client. Install with:[/]")
+        console.print("[yellow]  pip install job-hunter\\[notion][/]")
+        raise SystemExit(1)
 
     token = os.environ.get("NOTION_TOKEN")
     if not token:
@@ -489,9 +505,15 @@ def sync_push(ctx, drive_creds):
     """Push jobs to Notion (and optionally upload PDFs to Drive)."""
     import os
     from job_hunter.database import JobDB
-    from job_hunter.notion.client import NotionJobDB
-    from job_hunter.notion.drive_uploader import DriveUploader
-    from job_hunter.notion.sync import push_jobs_to_notion
+
+    try:
+        from job_hunter.notion.client import NotionJobDB
+        from job_hunter.notion.drive_uploader import DriveUploader
+        from job_hunter.notion.sync import push_jobs_to_notion
+    except ImportError:
+        console.print("[red]Notion sync requires notion-client. Install with:[/]")
+        console.print("[yellow]  pip install job-hunter\\[notion][/]")
+        raise SystemExit(1)
 
     token = os.environ.get("NOTION_TOKEN")
     db_id = os.environ.get("NOTION_DATABASE_ID")
@@ -535,8 +557,14 @@ def sync_pull(ctx):
     """Pull status changes from Notion back to local DB."""
     import os
     from job_hunter.database import JobDB
-    from job_hunter.notion.client import NotionJobDB
-    from job_hunter.notion.sync import pull_status_from_notion
+
+    try:
+        from job_hunter.notion.client import NotionJobDB
+        from job_hunter.notion.sync import pull_status_from_notion
+    except ImportError:
+        console.print("[red]Notion sync requires notion-client. Install with:[/]")
+        console.print("[yellow]  pip install job-hunter\\[notion][/]")
+        raise SystemExit(1)
 
     token = os.environ.get("NOTION_TOKEN")
     db_id = os.environ.get("NOTION_DATABASE_ID")
@@ -584,8 +612,13 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
     import json as _json
     import time
 
-    from job_hunter.apply.applicant import Applicant
-    from job_hunter.apply.strategies.base import detect_platform
+    try:
+        from job_hunter.apply.applicant import Applicant
+        from job_hunter.apply.strategies.base import detect_platform
+    except ImportError:
+        console.print("[red]Auto-apply requires playwright. Install with:[/]")
+        console.print("[yellow]  pip install job-hunter\\[apply][/]")
+        raise SystemExit(1)
 
     config_dir = ctx.obj["config_dir"]
     profile_path = config_dir / "profile.json"

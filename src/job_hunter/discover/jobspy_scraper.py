@@ -3,7 +3,11 @@ from __future__ import annotations
 import logging
 
 import pandas as pd
-from jobspy import scrape_jobs
+
+try:
+    from jobspy import scrape_jobs
+except ImportError:
+    scrape_jobs = None  # type: ignore[assignment]
 
 from job_hunter.database import Job
 
@@ -38,6 +42,12 @@ def run_jobspy_search(
         kwargs["distance"] = distance_km
     if remote_only:
         kwargs["is_remote"] = True
+
+    if scrape_jobs is None:
+        raise ImportError(
+            "Job discovery requires python-jobspy. Install with:\n"
+            "  pip install job-hunter[jobspy]"
+        )
 
     logger.info(f"JobSpy: searching '{query}' in '{location}' on {boards}")
     try:
