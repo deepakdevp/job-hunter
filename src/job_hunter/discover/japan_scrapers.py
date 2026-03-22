@@ -15,54 +15,49 @@ class TokyoDevScraper(BaseScraper):
     name = "TokyoDev"
     base_url = "https://www.tokyodev.com"
 
-    async def scrape(self, query: str = "", location: str = "", max_results: int = 50) -> list[Job]:
+    async def scrape(self, query: str = "", location: str = "", max_results: int = 100) -> list[Job]:
         jobs = []
         url = f"{self.base_url}/jobs"
         try:
             html = await self._fetch(url)
             soup = BeautifulSoup(html, "html.parser")
 
-            listings = soup.select("article.job-listing, .job-card, [data-job], .jobs-list-item")
-            if not listings:
-                listings = soup.select("a[href*='/jobs/']")
-
-            for item in listings[:max_results]:
-                title_el = item.select_one("h2, h3, .job-title, .title")
-                company_el = item.select_one(".company, .company-name, .employer")
-                link_el = item if item.name == "a" else item.select_one("a[href]")
-
-                if not link_el or not link_el.get("href"):
-                    continue
-
-                href = link_el["href"]
+            # Real job listings are at /companies/{company}/jobs/{slug}
+            # Filter out tag/filter pages like /jobs/salary-data, /jobs/python
+            seen = set()
+            for link in soup.select("a[href*='/companies/'][href*='/jobs/']"):
+                href = link.get("href", "")
                 if not href.startswith("http"):
                     href = urljoin(self.base_url, href)
+                if href in seen:
+                    continue
+                seen.add(href)
 
-                if "/jobs/" not in href:
+                title = link.get_text(strip=True)
+                if not title or len(title) < 3:
                     continue
 
-                title = title_el.get_text(strip=True) if title_el else ""
-                company = company_el.get_text(strip=True) if company_el else ""
-
-                if not title:
-                    title = link_el.get_text(strip=True)
-
-                if title and query and query.lower() not in title.lower():
-                    pass  # include all, scoring filters later
+                # Extract company from URL: /companies/{company}/jobs/{slug}
+                parts = href.split("/companies/")
+                company = "Unknown"
+                if len(parts) > 1:
+                    company_slug = parts[1].split("/")[0]
+                    company = company_slug.replace("-", " ").title()
 
                 jobs.append(
                     Job(
                         url=href,
-                        title=title or "Unknown",
-                        company=company or "Unknown",
+                        title=title,
+                        company=company,
                         location="Japan",
                         source="tokyodev",
                     )
                 )
+
             logger.info(f"TokyoDev: found {len(jobs)} jobs")
         except Exception as e:
             logger.error(f"TokyoDev scrape failed: {e}")
-        return jobs
+        return jobs[:max_results]
 
 
 class JapanDevScraper(BaseScraper):
