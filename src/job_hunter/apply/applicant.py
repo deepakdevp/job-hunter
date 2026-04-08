@@ -29,6 +29,9 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Score threshold below which the candidate is warned about weak match.
+WEAK_MATCH_THRESHOLD = 3
+
 
 @dataclass
 class ApplyResult:
@@ -92,12 +95,14 @@ class Applicant:
         llm: object | None = None,
         log_path: Path | str | None = None,
         dry_run: bool = False,
+        confirm_submit: bool = False,
     ) -> None:
         self.profile = profile
         self.session_mgr = SessionManager(Path(session_dir))
         self.llm = llm
         self.log_path = Path(log_path) if log_path else None
         self.dry_run = dry_run
+        self.confirm_submit = confirm_submit
 
     def _select_strategy(self, url: str) -> BaseFormFiller:
         """Return the appropriate form-filler strategy for *url*."""
@@ -115,8 +120,25 @@ class Applicant:
             return False
         return True
 
+    def _parse_evaluation_data(self, job: Job) -> dict | None:
+        """Parse evaluation JSON from a job, returning *None* on failure."""
+        if not job.evaluation:
+            return None
+        try:
+            return json.loads(job.evaluation)
+        except (json.JSONDecodeError, TypeError):
+            log.warning("Could not parse evaluation data for %s", job.url)
+            return None
+
     async def apply_to_job(self, job: Job) -> ApplyResult:
-        """Run the full browser automation flow for a single *job*."""
+        """Run the full browser automation flow for a single *job*.
+
+        Ethical guardrails
+        ------------------
+        * Warns on weak matches (score < WEAK_MATCH_THRESHOLD).
+        * In non-dry-run mode, requires ``confirm_submit=True`` to actually
+          click submit — otherwise the run is treated as a dry-run.
+        """
         try:
             from playwright.async_api import async_playwright
         except ImportError:
@@ -124,6 +146,27 @@ class Applicant:
                 "Auto-apply requires playwright. Install with:\n"
                 "  pip install job-hunter[apply]"
             )
+
+        # --- Ethical guardrail: weak-match warning ---
+        if job.score is not None and job.score < WEAK_MATCH_THRESHOLD:
+            log.warning(
+                "Weak match (score %d/%d) for %s at %s — consider skipping "
+                "unless you have a specific reason to apply.",
+                job.score,
+                10,
+                job.title,
+                job.company,
+            )
+
+        log.info(
+            "Quality-over-speed: tailoring application for %s at %s (score=%s)",
+            job.title,
+            job.company,
+            job.score,
+        )
+
+        # --- Parse evaluation data for FieldMapper context ---
+        evaluation_data = self._parse_evaluation_data(job)
 
         url = job.apply_url or job.url
         platform = detect_platform(url)
@@ -145,6 +188,10 @@ class Applicant:
 
                 await page.goto(url, wait_until="domcontentloaded")
 
+                # Inject evaluation context into strategy if supported.
+                if evaluation_data and hasattr(strategy, "set_evaluation_data"):
+                    strategy.set_evaluation_data(evaluation_data)
+
                 # Fill the form.
                 fill_result: FillResult = await strategy.fill(page, job, self.profile)
                 if not fill_result.success:
@@ -161,8 +208,14 @@ class Applicant:
                 # Upload files.
                 await strategy.upload_files(page, job)
 
-                # Submit or dry-run.
+                # --- Ethical guardrail: confirm-submit gate ---
                 if self.dry_run:
+                    status = "dry_run"
+                elif not self.confirm_submit:
+                    log.warning(
+                        "Submit blocked — confirm_submit is False. "
+                        "Re-run with --confirm or confirm_submit=True to submit."
+                    )
                     status = "dry_run"
                 else:
                     submitted = await strategy.submit(page)
@@ -180,6 +233,16 @@ class Applicant:
                 platform=platform,
                 status=status,
             )
+
+            # Suggest outreach after successful application
+            if status == "applied":
+                log.info(
+                    "Application submitted! Consider running "
+                    "`hunt outreach --job-url %s` to find and contact hiring "
+                    "managers on LinkedIn.",
+                    job.url,
+                )
+
         except Exception as exc:  # noqa: BLE001
             log.exception("apply_to_job failed for %s", job.url)
             result = ApplyResult(

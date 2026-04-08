@@ -13,12 +13,17 @@ CONFIDENCE_THRESHOLD = 0.7
 _FIELD_MAPPER_PROMPT = """\
 You are a job application assistant. Given the candidate profile below, answer the form field question as accurately as possible.
 
+Use the "I'm Choosing You" tone: confident without arrogance, proof-first.
+
 ## Candidate Profile
 - Name: {name}
 - Target Role: {target_role}
 - Skills: {skills}
 - Work Authorization: {work_authorization}
 - Current Role: {current_title} at {current_company}
+
+## Evaluation Context (if available)
+{evaluation_context}
 
 ## Form Field Question
 {question}
@@ -44,9 +49,54 @@ class FieldSuggestion:
 class FieldMapper:
     """Uses an LLM to suggest answers for unknown form fields."""
 
-    def __init__(self, llm, profile: dict) -> None:
+    def __init__(
+        self,
+        llm,
+        profile: dict,
+        evaluation_data: dict | None = None,
+    ) -> None:
         self._llm = llm
         self._profile = profile
+        self._evaluation_data = evaluation_data
+
+    def _build_evaluation_context(self) -> str:
+        """Format evaluation data for the field-mapper prompt."""
+        if not self._evaluation_data:
+            return "No evaluation data available."
+
+        parts: list[str] = []
+
+        # Block B — CV match / proof points
+        for key in ("block_b", "cv_match", "proof_points"):
+            val = self._evaluation_data.get(key)
+            if val:
+                parts.append(f"### Proof Points ({key})")
+                if isinstance(val, (dict, list)):
+                    parts.append(json.dumps(val, indent=2))
+                else:
+                    parts.append(str(val))
+
+        # Block F — STAR stories for behavioural answers
+        for key in ("block_f", "star_stories"):
+            val = self._evaluation_data.get(key)
+            if val:
+                parts.append(f"### STAR Stories ({key})")
+                if isinstance(val, (dict, list)):
+                    parts.append(json.dumps(val, indent=2))
+                else:
+                    parts.append(str(val))
+
+        # Block G — pre-drafted answers
+        for key in ("block_g", "pre_drafted_answers", "draft_answers"):
+            val = self._evaluation_data.get(key)
+            if val:
+                parts.append(f"### Pre-drafted Answers ({key})")
+                if isinstance(val, (dict, list)):
+                    parts.append(json.dumps(val, indent=2))
+                else:
+                    parts.append(str(val))
+
+        return "\n".join(parts) if parts else "No evaluation data available."
 
     def _build_prompt(self, question: str) -> str:
         """Build a prompt with profile context."""
@@ -61,6 +111,7 @@ class FieldMapper:
             work_authorization=self._profile.get("work_authorization", ""),
             current_title=current.get("title", "N/A"),
             current_company=current.get("name", "N/A"),
+            evaluation_context=self._build_evaluation_context(),
             question=question,
         )
 
