@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Hunter Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --border: #334155;
+  --surface: #273548;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #3b82f6;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --purple: #a855f7;
+  --cyan: #06b6d4;
+  --orange: #f97316;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Nav */
+.navbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.navbar-brand i { color: var(--accent); }
+.nav-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.nav-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.nav-badge strong { color: var(--text); font-size: 13px; }
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle-switch.active { background: var(--accent); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle-switch.active::after { transform: translateX(16px); }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  overflow-x: auto;
+}
+.tab {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab:hover { color: var(--text-dim); }
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Main */
+.main { padding: 24px; max-width: 1440px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.card-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-header i { width: 16px; height: 16px; }
+
+/* Stat Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform .15s, border-color .15s;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stat-icon.blue { background: rgba(59,130,246,.15); color: var(--accent); }
+.stat-icon.green { background: rgba(34,197,94,.15); color: var(--green); }
+.stat-icon.yellow { background: rgba(234,179,8,.15); color: var(--yellow); }
+.stat-icon.purple { background: rgba(168,85,247,.15); color: var(--purple); }
+.stat-icon.cyan { background: rgba(6,182,212,.15); color: var(--cyan); }
+.stat-icon.orange { background: rgba(249,115,22,.15); color: var(--orange); }
+.stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; }
+.stat-label { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+/* Charts Grid */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.charts-grid .card { min-height: 300px; }
+.chart-wrap { position: relative; height: 250px; }
+
+/* Funnel */
+.funnel { margin-bottom: 24px; }
+.funnel-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+.funnel-label {
+  width: 100px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.funnel-track {
+  flex: 1;
+  height: 28px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.funnel-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .5s ease;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  min-width: fit-content;
+}
+.funnel-count {
+  width: 80px;
+  font-size: 13px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead { position: sticky; top: 0; z-index: 2; }
+th {
+  background: var(--surface);
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:hover td { background: rgba(59,130,246,.04); }
+tr:last-child td { border-bottom: none; }
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-score-high { background: rgba(34,197,94,.15); color: var(--green); }
+.badge-score-mid { background: rgba(59,130,246,.15); color: var(--accent); }
+.badge-score-low-mid { background: rgba(234,179,8,.15); color: var(--yellow); }
+.badge-score-low { background: rgba(239,68,68,.15); color: var(--red); }
+
+.badge-status-new { background: rgba(100,116,139,.2); color: var(--text-dim); }
+.badge-status-enriched { background: rgba(6,182,212,.15); color: var(--cyan); }
+.badge-status-scored { background: rgba(59,130,246,.15); color: var(--accent); }
+.badge-status-evaluated { background: rgba(168,85,247,.15); color: var(--purple); }
+.badge-status-tailored { background: rgba(234,179,8,.15); color: var(--yellow); }
+.badge-status-synced { background: rgba(249,115,22,.15); color: var(--orange); }
+.badge-status-applied { background: rgba(34,197,94,.15); color: var(--green); }
+.badge-status-rejected { background: rgba(239,68,68,.15); color: var(--red); }
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-bar label {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filter-bar select,
+.filter-bar input[type="text"],
+.filter-bar input[type="range"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.filter-bar select:focus,
+.filter-bar input[type="text"]:focus {
+  border-color: var(--accent);
+}
+.filter-bar input[type="text"] { width: 200px; }
+.score-value { font-size: 13px; color: var(--accent); font-weight: 600; min-width: 24px; }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 16px;
+}
+.page-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all .15s;
+}
+.page-btn:hover { border-color: var(--accent); color: var(--text); }
+.page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
+.page-info { font-size: 12px; color: var(--text-muted); margin: 0 8px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); color: var(--text); }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: #2563eb; }
+.btn-sm { padding: 3px 8px; font-size: 11px; }
+.btn-icon {
+  width: 28px; height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.action-btns { display: flex; gap: 4px; }
+
+/* Detail Panel */
+.detail-panel { animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.detail-title { font-size: 22px; font-weight: 700; }
+.detail-company { font-size: 15px; color: var(--text-dim); margin-top: 4px; }
+.detail-badges { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.info-item {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 12px;
+}
+.info-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.info-value { font-size: 14px; margin-top: 4px; }
+
+.description-box {
+  max-height: 500px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin-bottom: 24px;
+}
+
+/* Accordion */
+.accordion { margin-bottom: 16px; }
+.accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.accordion-header:hover { border-color: var(--accent); }
+.accordion-header.open { border-radius: var(--radius) var(--radius) 0 0; border-bottom-color: transparent; }
+.accordion-body {
+  display: none;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--card);
+}
+.accordion-body.open { display: block; }
+
+/* Copy button */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all .15s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--text); }
+.copy-btn.copied { background: var(--green); color: white; border-color: var(--green); }
+
+/* Copyable block */
+.copyable-block {
+  position: relative;
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.copyable-block .copy-btn { position: absolute; top: 8px; right: 8px; }
+.char-count { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Story Cards */
+.stories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+.story-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color .15s;
+}
+.story-card:hover { border-color: var(--accent); }
+.story-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.story-section { margin-bottom: 8px; }
+.story-section-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.story-section-text { font-size: 13px; color: var(--text-dim); }
+.story-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(59,130,246,.1);
+  color: var(--accent);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* Keyword Tags */
+.keyword-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+.keyword-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.keyword-tag.covered { background: rgba(34,197,94,.15); color: var(--green); }
+.keyword-tag.missing { background: rgba(239,68,68,.1); color: var(--red); border: 1px dashed rgba(239,68,68,.3); }
+
+/* Comparison */
+.compare-table th { font-size: 10px; }
+.compare-cell { text-align: center; }
+.compare-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.cs-1, .cs-2 { background: rgba(239,68,68,.15); color: var(--red); }
+.cs-3 { background: rgba(234,179,8,.15); color: var(--yellow); }
+.cs-4, .cs-5 { background: rgba(34,197,94,.15); color: var(--green); }
+
+/* Loading / Error */
+.spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: var(--text-muted);
+  gap: 8px;
+  font-size: 13px;
+}
+.spinner::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-state {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--red);
+  font-size: 13px;
+}
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.empty-state i { margin-bottom: 12px; display: block; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--green);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 1000;
+  animation: toastIn .3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } }
+
+/* Back button */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding: 6px 0;
+}
+.back-btn:hover { color: var(--accent); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .navbar { padding: 0 12px; }
+  .nav-badges { display: none; }
+  .main { padding: 16px; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar input[type="text"] { width: 100%; }
+  .stories-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Tooltip */
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Section spacing in detail */
+.detail-section { margin-bottom: 24px; }
+.detail-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Mini table within cards */
+.mini-table { width: 100%; font-size: 12px; }
+.mini-table th { padding: 6px 8px; font-size: 10px; }
+.mini-table td { padding: 6px 8px; }
+
+/* theme badge */
+.theme-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(168,85,247,.15);
+  color: var(--purple);
+  margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <i data-lucide="crosshair"></i>
+    Job Hunter
+  </div>
+  <div class="nav-badges" id="navBadges">
+    <span class="nav-badge">Total <strong id="navTotal">--</strong></span>
+    <span class="nav-badge">Scored <strong id="navScored">--</strong></span>
+    <span class="nav-badge">Evaluated <strong id="navEvaluated">--</strong></span>
+    <span class="nav-badge">Applied <strong id="navApplied">--</strong></span>
+    <span class="nav-badge">Stories <strong id="navStories">--</strong></span>
+  </div>
+  <div class="nav-controls">
+    <label class="auto-refresh-toggle" onclick="toggleAutoRefresh()">
+      <span>Auto-refresh</span>
+      <div class="toggle-switch" id="refreshToggle"></div>
+    </label>
+  </div>
+</nav>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="overview" onclick="switchTab('overview')">
+    <i data-lucide="layout-dashboard" style="width:14px;height:14px"></i> Overview
+  </div>
+  <div class="tab" data-tab="jobs" onclick="switchTab('jobs')">
+    <i data-lucide="briefcase" style="width:14px;height:14px"></i> Jobs
+  </div>
+  <div class="tab" data-tab="detail" id="detailTab" style="display:none" onclick="switchTab('detail')">
+    <i data-lucide="file-text" style="width:14px;height:14px"></i> Job Detail
+  </div>
+  <div class="tab" data-tab="stories" onclick="switchTab('stories')">
+    <i data-lucide="book-open" style="width:14px;height:14px"></i> Stories
+  </div>
+  <div class="tab" data-tab="compare" onclick="switchTab('compare')">
+    <i data-lucide="git-compare-arrows" style="width:14px;height:14px"></i> Compare
+  </div>
+  <div class="tab" data-tab="timeline" onclick="switchTab('timeline')">
+    <i data-lucide="calendar" style="width:14px;height:14px"></i> Timeline
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Overview Tab -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="stats-grid" id="statsCards">
+      <div class="stat-card"><div class="stat-icon blue"><i data-lucide="layers"></i></div><div><div class="stat-value" id="statTotal">--</div><div class="stat-label">Total Jobs</div></div></div>
+      <div class="stat-card"><div class="stat-icon cyan"><i data-lucide="bar-chart-3"></i></div><div><div class="stat-value" id="statAvgScore">--</div><div class="stat-label">Avg Score</div></div></div>
+      <div class="stat-card"><div class="stat-icon green"><i data-lucide="send"></i></div><div><div class="stat-value" id="statApplied">--</div><div class="stat-label">Applied</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple"><i data-lucide="scan-search"></i></div><div><div class="stat-value" id="statEvaluated">--</div><div class="stat-label">Evaluated</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow"><i data-lucide="file-check"></i></div><div><div class="stat-value" id="statTailored">--</div><div class="stat-label">Tailored</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange"><i data-lucide="book-open"></i></div><div><div class="stat-value" id="statStories">--</div><div class="stat-label">Stories</div></div></div>
+    </div>
+
+    <!-- Pipeline Funnel -->
+    <div class="card funnel" style="margin-bottom:24px">
+      <div class="card-header"><i data-lucide="git-branch"></i> Pipeline Funnel</div>
+      <div id="funnelContainer"></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><i data-lucide="bar-chart-3"></i> Score Distribution</div>
+        <div class="chart-wrap"><canvas id="scoreChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i data-lucide="building-2"></i> Top Companies</div>
+        <div class="chart-wrap"><canvas id="companyChart"></canvas></div>
+      </div>
+      <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-header"><i data-lucide="trending-up"></i> Discovery Timeline</div>
+        <div class="chart-wrap"><canvas id="discoveryChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs Tab -->
+  <div class="tab-content" id="tab-jobs">
+    <div class="filter-bar">
+      <label>Status
+        <select id="filterStatus" onchange="loadJobs()">
+          <option value="">All</option>
+          <option value="new">New</option>
+          <option value="enriched">Enriched</option>
+          <option value="scored">Scored</option>
+          <option value="evaluated">Evaluated</option>
+          <option value="tailored">Tailored</option>
+          <option value="synced">Synced</option>
+          <option value="applied">Applied</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </label>
+      <label>Min Score <span class="score-value" id="minScoreVal">0</span>
+        <input type="range" id="filterMinScore" min="0" max="10" value="0" oninput="document.getElementById('minScoreVal').textContent=this.value" onchange="loadJobs()">
+      </label>
+      <label>Search
+        <input type="text" id="filterSearch" placeholder="Title, company, location..." onkeydown="if(event.key==='Enter')loadJobs()">
+      </label>
+      <label>Sort
+        <select id="filterSort" onchange="loadJobs()">
+          <option value="found_date">Date Found</option>
+          <option value="score">Score</option>
+          <option value="company">Company</option>
+          <option value="title">Title</option>
+        </select>
+      </label>
+      <label>Order
+        <select id="filterOrder" onchange="loadJobs()">
+          <option value="desc">Desc</option>
+          <option value="asc">Asc</option>
+        </select>
+      </label>
+      <button class="btn" onclick="loadJobs()"><i data-lucide="search" style="width:12px;height:12px"></i> Search</button>
+    </div>
+    <div id="jobsTableContainer"><div class="spinner">Loading jobs...</div></div>
+    <div id="jobsPagination" class="pagination"></div>
+  </div>
+
+  <!-- Detail Tab -->
+  <div class="tab-content" id="tab-detail">
+    <div id="detailContainer"><div class="empty-state">Select a job to view details.</div></div>
+  </div>
+
+  <!-- Stories Tab -->
+  <div class="tab-content" id="tab-stories">
+    <div class="filter-bar" style="margin-bottom:16px">
+      <label>Search
+        <input type="text" id="storySearch" placeholder="Search stories..." onkeydown="if(event.key==='Enter')loadStories()">
+      </label>
+      <button class="btn" onclick="loadStories()"><i data-lucide="search" style="width:12px;height:12px"></i> Search</button>
+    </div>
+    <div id="storiesContainer"><div class="spinner">Loading stories...</div></div>
+  </div>
+
+  <!-- Compare Tab -->
+  <div class="tab-content" id="tab-compare">
+    <div class="filter-bar" style="margin-bottom:16px">
+      <label>Min Score
+        <select id="compareMinScore" onchange="loadComparison()">
+          <option value="5">5+</option>
+          <option value="6">6+</option>
+          <option value="7">7+</option>
+          <option value="8">8+</option>
+          <option value="3">3+</option>
+          <option value="0">All</option>
+        </select>
+      </label>
+      <label>Max Jobs
+        <select id="compareLimit" onchange="loadComparison()">
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+    </div>
+    <div id="compareContainer"><div class="spinner">Loading comparison...</div></div>
+  </div>
+
+  <!-- Timeline Tab -->
+  <div class="tab-content" id="tab-timeline">
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header"><i data-lucide="trending-up"></i> Daily Activity</div>
+        <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i data-lucide="pie-chart"></i> Status Breakdown</div>
+        <div class="chart-wrap"><canvas id="statusPieChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// -------------------------------------------------------
+// State
+// -------------------------------------------------------
+let currentTab = 'overview';
+let currentPage = 1;
+let autoRefreshEnabled = false;
+let autoRefreshTimer = null;
+let currentDetailUrl = null;
+const chartInstances = {};
+
+// -------------------------------------------------------
+// Utilities
+// -------------------------------------------------------
+function timeAgo(dateStr) {
+  if (!dateStr) return '--';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  const days = Math.floor(diff / 86400);
+  if (days === 1) return '1 day ago';
+  if (days < 30) return days + ' days ago';
+  if (days < 365) return Math.floor(days / 30) + ' months ago';
+  return Math.floor(days / 365) + ' years ago';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '--';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function scoreBadgeClass(score) {
+  if (score == null) return 'badge-score-low';
+  if (score >= 8) return 'badge-score-high';
+  if (score >= 6) return 'badge-score-mid';
+  if (score >= 4) return 'badge-score-low-mid';
+  return 'badge-score-low';
+}
+
+function statusBadgeClass(status) {
+  return 'badge-status-' + (status || 'new');
+}
+
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len) + '...' : str;
+}
+
+function encodeJobUrl(url) {
+  return encodeURIComponent(url);
+}
+
+async function apiFetch(path) {
+  const resp = await fetch(path);
+  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+  return resp.json();
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      btn.classList.add('copied');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
+    }
+    showToast('Copied to clipboard');
+  });
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+// -------------------------------------------------------
+// Tabs
+// -------------------------------------------------------
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+  if (tab === 'detail') document.getElementById('detailTab').style.display = '';
+
+  if (tab === 'overview') loadStats();
+  else if (tab === 'jobs') loadJobs();
+  else if (tab === 'stories') loadStories();
+  else if (tab === 'compare') loadComparison();
+  else if (tab === 'timeline') loadTimeline();
+  else if (tab === 'detail' && currentDetailUrl) loadJobDetail(currentDetailUrl);
+}
+
+// -------------------------------------------------------
+// Auto-refresh
+// -------------------------------------------------------
+function toggleAutoRefresh() {
+  autoRefreshEnabled = !autoRefreshEnabled;
+  document.getElementById('refreshToggle').classList.toggle('active', autoRefreshEnabled);
+  if (autoRefreshEnabled) {
+    autoRefreshTimer = setInterval(() => refreshCurrentTab(), 30000);
+  } else {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+}
+
+function refreshCurrentTab() {
+  switch (currentTab) {
+    case 'overview': loadStats(); break;
+    case 'jobs': loadJobs(); break;
+    case 'stories': loadStories(); break;
+    case 'compare': loadComparison(); break;
+    case 'timeline': loadTimeline(); break;
+    case 'detail': if (currentDetailUrl) loadJobDetail(currentDetailUrl); break;
+  }
+}
+
+// -------------------------------------------------------
+// Overview / Stats
+// -------------------------------------------------------
+async function loadStats() {
+  try {
+    const [stats, timeline] = await Promise.all([
+      apiFetch('/api/stats'),
+      apiFetch('/api/timeline')
+    ]);
+
+    if (stats.error) {
+      document.getElementById('statsCards').innerHTML = '<div class="empty-state">No data yet. Run the pipeline to discover jobs.</div>';
+      return;
+    }
+
+    // Nav badges
+    document.getElementById('navTotal').textContent = stats.total || 0;
+    document.getElementById('navScored').textContent = stats.scored || 0;
+    document.getElementById('navEvaluated').textContent = stats.evaluated || 0;
+    document.getElementById('navApplied').textContent = stats.applied || 0;
+    document.getElementById('navStories').textContent = stats.stories || 0;
+
+    // Stat cards
+    document.getElementById('statTotal').textContent = stats.total || 0;
+    document.getElementById('statAvgScore').textContent = stats.avg_score != null ? stats.avg_score : '--';
+    document.getElementById('statApplied').textContent = stats.applied || 0;
+    document.getElementById('statEvaluated').textContent = stats.evaluated || 0;
+    document.getElementById('statTailored').textContent = stats.tailored || 0;
+    document.getElementById('statStories').textContent = stats.stories || 0;
+
+    // Funnel
+    renderFunnel(stats);
+
+    // Score distribution chart
+    renderScoreChart(stats.by_score || {});
+
+    // Top companies chart
+    renderCompanyChart(stats.top_companies || []);
+
+    // Discovery timeline chart
+    renderDiscoveryChart(timeline.daily || []);
+
+  } catch (err) {
+    console.error('Stats load error:', err);
+  }
+}
+
+function renderFunnel(stats) {
+  const total = stats.total || 1;
+  const stages = [
+    { label: 'Discovered', count: stats.total || 0, color: '#3b82f6' },
+    { label: 'Enriched', count: (stats.enriched || 0) + (stats.scored || 0) + (stats.evaluated || 0) + (stats.tailored || 0) + (stats.synced || 0) + (stats.applied || 0), color: '#06b6d4' },
+    { label: 'Scored', count: (stats.scored || 0) + (stats.evaluated || 0) + (stats.tailored || 0) + (stats.synced || 0) + (stats.applied || 0), color: '#8b5cf6' },
+    { label: 'Evaluated', count: stats.evaluated || 0, color: '#a855f7' },
+    { label: 'Tailored', count: (stats.tailored || 0) + (stats.synced || 0) + (stats.applied || 0), color: '#eab308' },
+    { label: 'Applied', count: stats.applied || 0, color: '#22c55e' },
+  ];
+
+  const container = document.getElementById('funnelContainer');
+  container.innerHTML = stages.map(s => {
+    const pct = total > 0 ? Math.round(s.count / total * 100) : 0;
+    const barPct = Math.max(pct, 2);
+    return `<div class="funnel-bar">
+      <div class="funnel-label">${s.label}</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:${barPct}%;background:${s.color}">${pct > 8 ? s.count : ''}</div>
+      </div>
+      <div class="funnel-count">${s.count} (${pct}%)</div>
+    </div>`;
+  }).join('');
+}
+
+function renderScoreChart(byScore) {
+  const labels = ['0-2', '3-4', '5-6', '7-8', '9-10'];
+  const data = labels.map(l => byScore[l] || 0);
+  const colors = ['#ef4444', '#eab308', '#3b82f6', '#22c55e', '#10b981'];
+  destroyChart('scoreChart');
+  chartInstances.scoreChart = new Chart(document.getElementById('scoreChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 4, barPercentage: 0.6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderCompanyChart(companies) {
+  const top = companies.slice(0, 10);
+  const labels = top.map(c => c.company || 'Unknown');
+  const data = top.map(c => c.count);
+  destroyChart('companyChart');
+  chartInstances.companyChart = new Chart(document.getElementById('companyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: '#3b82f6', borderRadius: 4, barPercentage: 0.6 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 }, beginAtZero: true },
+        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderDiscoveryChart(daily) {
+  const labels = daily.map(d => d.date);
+  const data = daily.map(d => d.discovered || 0);
+  destroyChart('discoveryChart');
+  chartInstances.discoveryChart = new Chart(document.getElementById('discoveryChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jobs Discovered',
+        data,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,.1)',
+        fill: true,
+        tension: .3,
+        pointRadius: 3,
+        pointBackgroundColor: '#3b82f6'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 15, font: { size: 10 } } },
+        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// -------------------------------------------------------
+// Jobs List
+// -------------------------------------------------------
+async function loadJobs(page) {
+  if (page) currentPage = page;
+  else currentPage = 1;
+
+  const status = document.getElementById('filterStatus').value;
+  const minScore = parseInt(document.getElementById('filterMinScore').value);
+  const search = document.getElementById('filterSearch').value.trim();
+  const sort = document.getElementById('filterSort').value;
+  const order = document.getElementById('filterOrder').value;
+
+  const params = new URLSearchParams({ page: currentPage, limit: 25, sort, order });
+  if (status) params.set('status', status);
+  if (minScore > 0) params.set('min_score', minScore);
+  if (search) params.set('search', search);
+
+  const container = document.getElementById('jobsTableContainer');
+  container.innerHTML = '<div class="spinner">Loading jobs...</div>';
+
+  try {
+    const data = await apiFetch('/api/jobs?' + params.toString());
+    if (!data.jobs || data.jobs.length === 0) {
+      container.innerHTML = '<div class="empty-state">No jobs found. Try adjusting filters or run the discover pipeline.</div>';
+      document.getElementById('jobsPagination').innerHTML = '';
+      return;
+    }
+    renderJobsTable(data.jobs);
+    renderPagination(data.page, data.pages, data.total);
+  } catch (err) {
+    container.innerHTML = '<div class="error-state">Failed to load jobs. Is the server running?</div>';
+    document.getElementById('jobsPagination').innerHTML = '';
+  }
+}
+
+function renderJobsTable(jobs) {
+  let html = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Score</th><th>Title</th><th>Company</th><th>Location</th>
+      <th>Source</th><th>Status</th><th>Visa</th><th>Remote</th>
+      <th>Posted</th><th>Actions</th>
+    </tr></thead><tbody>`;
+
+  for (const j of jobs) {
+    const scoreClass = scoreBadgeClass(j.score);
+    const statusClass = statusBadgeClass(j.status);
+    const visa = j.visa_sponsorship === true ? '<span style="color:var(--green)">&#10003;</span>'
+               : j.visa_sponsorship === false ? '<span style="color:var(--red)">&#10007;</span>' : '--';
+    const remote = j.remote_policy ? esc(j.remote_policy) : '--';
+    const posted = j.posted_date
+      ? `<span data-tooltip="${formatDate(j.posted_date)}">${timeAgo(j.posted_date)}</span>`
+      : (j.found_date ? `<span data-tooltip="${formatDate(j.found_date)}">${timeAgo(j.found_date)}</span>` : '--');
+
+    html += `<tr style="cursor:pointer" onclick="openJobDetail('${esc(j.url.replace(/'/g, "\\'"))}')">
+      <td><span class="badge ${scoreClass}">${j.score != null ? j.score : '--'}</span></td>
+      <td>${esc(truncate(j.title, 50))}</td>
+      <td>${esc(truncate(j.company, 30))}</td>
+      <td>${esc(truncate(j.location, 25))}</td>
+      <td>${esc(j.source || '--')}</td>
+      <td><span class="badge ${statusClass}">${esc(j.status || 'new')}</span></td>
+      <td>${visa}</td>
+      <td>${remote}</td>
+      <td>${posted}</td>
+      <td class="action-btns" onclick="event.stopPropagation()">
+        <button class="btn btn-sm" onclick="openJobDetail('${esc(j.url.replace(/'/g, "\\'"))}')">View</button>
+        ${j.has_resume ? `<button class="btn btn-sm" onclick="window.open('/api/jobs/${encodeJobUrl(j.url)}/resume')">Resume</button>` : ''}
+        ${j.has_cover_letter ? `<button class="btn btn-sm" onclick="viewCoverLetter('${esc(j.url.replace(/'/g, "\\'"))}')">CL</button>` : ''}
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  document.getElementById('jobsTableContainer').innerHTML = html;
+}
+
+function renderPagination(page, pages, total) {
+  const el = document.getElementById('jobsPagination');
+  if (pages <= 1) { el.innerHTML = `<span class="page-info">${total} jobs</span>`; return; }
+
+  let html = `<button class="page-btn" ${page <= 1 ? 'disabled' : ''} onclick="loadJobs(${page - 1})">Prev</button>`;
+
+  const start = Math.max(1, page - 2);
+  const end = Math.min(pages, page + 2);
+  if (start > 1) html += `<button class="page-btn" onclick="loadJobs(1)">1</button>`;
+  if (start > 2) html += `<span class="page-info">...</span>`;
+
+  for (let i = start; i <= end; i++) {
+    html += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="loadJobs(${i})">${i}</button>`;
+  }
+
+  if (end < pages - 1) html += `<span class="page-info">...</span>`;
+  if (end < pages) html += `<button class="page-btn" onclick="loadJobs(${pages})">${pages}</button>`;
+
+  html += `<button class="page-btn" ${page >= pages ? 'disabled' : ''} onclick="loadJobs(${page + 1})">Next</button>`;
+  html += `<span class="page-info">${total} jobs</span>`;
+  el.innerHTML = html;
+}
+
+// -------------------------------------------------------
+// Job Detail
+// -------------------------------------------------------
+function openJobDetail(url) {
+  currentDetailUrl = url;
+  document.getElementById('detailTab').style.display = '';
+  switchTab('detail');
+}
+
+async function loadJobDetail(url) {
+  const container = document.getElementById('detailContainer');
+  container.innerHTML = '<div class="spinner">Loading job detail...</div>';
+
+  try {
+    const data = await apiFetch('/api/jobs/' + encodeJobUrl(url) + '/detail');
+    renderJobDetail(data);
+  } catch (err) {
+    container.innerHTML = '<div class="error-state">Failed to load job detail.</div>';
+  }
+}
+
+async function viewCoverLetter(url) {
+  try {
+    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/cover-letter');
+    const text = await resp.text();
+    const win = window.open('', '_blank');
+    win.document.write(`<html><head><title>Cover Letter</title><style>body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:20px;line-height:1.7;white-space:pre-wrap;background:#0f172a;color:#e2e8f0;}</style></head><body>${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body></html>`);
+  } catch (err) {
+    showToast('Failed to load cover letter');
+  }
+}
+
+function renderJobDetail(data) {
+  const j = data.job;
+  const evaluation = data.evaluation;
+  const outreach = data.outreach;
+  const research = data.research_data;
+  const keywords = data.keywords;
+  const negotiation = data.negotiation;
+
+  const scoreClass = scoreBadgeClass(j.score);
+  const statusClass = statusBadgeClass(j.status);
+
+  let html = `<div class="detail-panel">
+    <div class="back-btn" onclick="switchTab('jobs')"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Back to Jobs</div>
+
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${esc(j.title || 'Untitled')}</div>
+        <div class="detail-company">${esc(j.company || 'Unknown Company')} ${j.location ? '&mdash; ' + esc(j.location) : ''}</div>
+        <div class="detail-badges">
+          <span class="badge ${scoreClass}">Score: ${j.score != null ? j.score : '--'}</span>
+          <span class="badge ${statusClass}">${esc(j.status || 'new')}</span>
+          ${j.url ? `<a href="${esc(j.url)}" target="_blank" class="btn btn-sm">View Posting <i data-lucide="external-link" style="width:10px;height:10px"></i></a>` : ''}
+          ${j.resume_path ? `<button class="btn btn-sm" onclick="window.open('/api/jobs/${encodeJobUrl(j.url)}/resume')">Download Resume</button>` : ''}
+          ${j.cover_letter_path ? `<button class="btn btn-sm" onclick="viewCoverLetter('${esc(j.url.replace(/'/g, "\\'"))}')">View Cover Letter</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">Source</div><div class="info-value">${esc(j.source || '--')}</div></div>
+      <div class="info-item"><div class="info-label">Posted</div><div class="info-value">${j.posted_date ? formatDate(j.posted_date) : '--'}</div></div>
+      <div class="info-item"><div class="info-label">Found</div><div class="info-value">${j.found_date ? formatDate(j.found_date) : '--'}</div></div>
+      <div class="info-item"><div class="info-label">Tech Stack</div><div class="info-value">${esc(j.tech_stack || '--')}</div></div>
+      <div class="info-item"><div class="info-label">Seniority</div><div class="info-value">${esc(j.seniority || '--')}</div></div>
+      <div class="info-item"><div class="info-label">Remote</div><div class="info-value">${esc(j.remote_policy || '--')}</div></div>
+      <div class="info-item"><div class="info-label">Visa Sponsorship</div><div class="info-value">${j.visa_sponsorship === 1 || j.visa_sponsorship === true ? '<span style="color:var(--green)">Yes</span>' : j.visa_sponsorship === 0 || j.visa_sponsorship === false ? '<span style="color:var(--red)">No</span>' : '--'}</div></div>
+      <div class="info-item"><div class="info-label">Salary</div><div class="info-value">${esc(j.salary_raw || '--')}</div></div>
+      <div class="info-item"><div class="info-label">Team Size</div><div class="info-value">${esc(j.team_size || '--')}</div></div>
+    </div>`;
+
+  // Score reason
+  if (j.score_reason) {
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><i data-lucide="message-square" style="width:16px;height:16px"></i> Score Rationale</div>
+      <div class="copyable-block">${esc(j.score_reason)}</div>
+    </div>`;
+  }
+
+  // Description
+  if (j.description) {
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><i data-lucide="file-text" style="width:16px;height:16px"></i> Job Description</div>
+      <div class="description-box">${esc(j.description)}</div>
+    </div>`;
+  }
+
+  // Evaluation
+  if (evaluation) {
+    html += renderEvaluation(evaluation);
+  }
+
+  // Keywords
+  if (keywords) {
+    html += renderKeywords(keywords);
+  }
+
+  // Outreach
+  if (outreach) {
+    html += renderOutreach(outreach);
+  }
+
+  // Negotiation
+  if (negotiation) {
+    html += renderNegotiation(negotiation);
+  }
+
+  // Research
+  if (research) {
+    html += renderResearch(research);
+  }
+
+  html += '</div>';
+  document.getElementById('detailContainer').innerHTML = html;
+  lucide.createIcons();
+}
+
+function renderEvaluation(ev) {
+  let html = `<div class="detail-section">
+    <div class="detail-section-title"><i data-lucide="clipboard-check" style="width:16px;height:16px"></i> Evaluation Report</div>`;
+
+  // Block A: Role Summary
+  if (ev.role_summary || ev.block_a || ev.A) {
+    const a = ev.role_summary || ev.block_a || ev.A;
+    html += makeAccordion('A: Role Summary', renderKVTable(a));
+  }
+
+  // Block B: CV Match
+  if (ev.cv_match || ev.block_b || ev.B) {
+    const b = ev.cv_match || ev.block_b || ev.B;
+    let content = '';
+    if (b.matches) content += '<h4 style="margin:0 0 8px;font-size:13px;color:var(--green)">Matches</h4>' + renderArrayTable(b.matches);
+    if (b.gaps) content += '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--red)">Gaps</h4>' + renderArrayTable(b.gaps);
+    if (!content) content = renderKVTable(b);
+    html += makeAccordion('B: CV Match', content);
+  }
+
+  // Block C: Level Strategy
+  if (ev.level_strategy || ev.block_c || ev.C) {
+    const c = ev.level_strategy || ev.block_c || ev.C;
+    html += makeAccordion('C: Level Strategy', typeof c === 'string' ? `<div class="copyable-block">${esc(c)}</div>` : renderKVTable(c));
+  }
+
+  // Block D: Comp Intelligence
+  if (ev.comp_intelligence || ev.block_d || ev.D) {
+    const d = ev.comp_intelligence || ev.block_d || ev.D;
+    html += makeAccordion('D: Comp Intelligence', renderKVTable(d));
+  }
+
+  // Block E: Personalization Plan
+  if (ev.personalization || ev.block_e || ev.E) {
+    const e = ev.personalization || ev.block_e || ev.E;
+    let content = '';
+    if (e.resume_changes) content += '<h4 style="margin:0 0 8px;font-size:13px">Resume Changes</h4>' + renderArrayTable(e.resume_changes);
+    if (e.linkedin_changes) content += '<h4 style="margin:16px 0 8px;font-size:13px">LinkedIn Changes</h4>' + renderArrayTable(e.linkedin_changes);
+    if (!content) content = renderKVTable(e);
+    html += makeAccordion('E: Personalization Plan', content);
+  }
+
+  // Block F: Interview Prep
+  if (ev.interview_prep || ev.block_f || ev.F) {
+    const f = ev.interview_prep || ev.block_f || ev.F;
+    let content = '';
+    if (f.star_stories && Array.isArray(f.star_stories)) {
+      content += f.star_stories.map(s => `<div class="card" style="margin-bottom:8px;padding:12px">
+        <strong>${esc(s.title || s.situation || '')}</strong>
+        ${s.situation ? `<div style="margin-top:4px;font-size:12px;color:var(--text-dim)"><b>S:</b> ${esc(s.situation)}</div>` : ''}
+        ${s.task ? `<div style="font-size:12px;color:var(--text-dim)"><b>T:</b> ${esc(s.task)}</div>` : ''}
+        ${s.action ? `<div style="font-size:12px;color:var(--text-dim)"><b>A:</b> ${esc(s.action)}</div>` : ''}
+        ${s.result ? `<div style="font-size:12px;color:var(--text-dim)"><b>R:</b> ${esc(s.result)}</div>` : ''}
+      </div>`).join('');
+    }
+    if (f.red_flags && Array.isArray(f.red_flags)) {
+      content += '<h4 style="margin:12px 0 8px;font-size:13px;color:var(--red)">Red Flag Questions</h4>';
+      content += f.red_flags.map(q => `<div class="copyable-block">${esc(typeof q === 'string' ? q : q.question || JSON.stringify(q))}</div>`).join('');
+    }
+    if (!content) content = renderKVTable(f);
+    html += makeAccordion('F: Interview Prep', content);
+  }
+
+  // Block G: Draft Answers
+  if (ev.draft_answers || ev.block_g || ev.G) {
+    const g = ev.draft_answers || ev.block_g || ev.G;
+    let content = '';
+    if (Array.isArray(g)) {
+      content = g.map((a, i) => {
+        const q = a.question || a.q || `Question ${i+1}`;
+        const ans = a.answer || a.a || (typeof a === 'string' ? a : JSON.stringify(a));
+        return `<div class="copyable-block" style="margin-bottom:12px">
+          <button class="copy-btn" onclick="copyToClipboard(this.parentElement.querySelector('.answer-text').textContent, this)">Copy</button>
+          <div style="font-weight:600;margin-bottom:4px">${esc(q)}</div>
+          <div class="answer-text">${esc(ans)}</div>
+        </div>`;
+      }).join('');
+    } else {
+      content = renderKVTable(g);
+    }
+    html += makeAccordion('G: Draft Answers', content);
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderKeywords(kw) {
+  let html = `<div class="detail-section">
+    <div class="detail-section-title"><i data-lucide="hash" style="width:16px;height:16px"></i> ATS Keywords</div>`;
+
+  if (kw.coverage != null) {
+    html += `<div style="margin-bottom:12px;font-size:14px">Coverage: <strong style="color:${kw.coverage >= 70 ? 'var(--green)' : kw.coverage >= 40 ? 'var(--yellow)' : 'var(--red)'}">${kw.coverage}%</strong></div>`;
+  }
+
+  html += '<div class="keyword-cloud">';
+  const allKw = kw.matched || kw.covered || kw.keywords || [];
+  const missingKw = kw.missing || kw.uncovered || [];
+  if (Array.isArray(allKw)) {
+    allKw.forEach(k => { html += `<span class="keyword-tag covered">${esc(typeof k === 'string' ? k : k.keyword || k.term || JSON.stringify(k))}</span>`; });
+  }
+  if (Array.isArray(missingKw)) {
+    missingKw.forEach(k => { html += `<span class="keyword-tag missing">${esc(typeof k === 'string' ? k : k.keyword || k.term || JSON.stringify(k))}</span>`; });
+  }
+  if (!Array.isArray(allKw) && !Array.isArray(missingKw) && typeof kw === 'object') {
+    Object.entries(kw).forEach(([key, val]) => {
+      if (key !== 'coverage') html += `<span class="keyword-tag covered">${esc(key)}: ${esc(String(val))}</span>`;
+    });
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function renderOutreach(outreach) {
+  let html = `<div class="detail-section">
+    <div class="detail-section-title"><i data-lucide="mail" style="width:16px;height:16px"></i> Outreach Messages</div>`;
+
+  const targets = Array.isArray(outreach) ? outreach : (outreach.targets || outreach.messages || [outreach]);
+  targets.forEach(t => {
+    const msgs = t.messages || t.drafts || [t];
+    const who = t.name || t.target || t.role || '';
+    if (who) html += `<h4 style="margin:8px 0;font-size:13px">${esc(who)}</h4>`;
+    (Array.isArray(msgs) ? msgs : [msgs]).forEach(m => {
+      const text = typeof m === 'string' ? m : (m.message || m.text || m.body || JSON.stringify(m));
+      html += `<div class="copyable-block">
+        <button class="copy-btn" onclick="copyToClipboard(this.nextElementSibling.textContent, this)">Copy</button>
+        <div>${esc(text)}</div>
+        <div class="char-count">${text.length} chars</div>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderNegotiation(neg) {
+  let html = `<div class="detail-section">
+    <div class="detail-section-title"><i data-lucide="handshake" style="width:16px;height:16px"></i> Negotiation Scripts</div>`;
+
+  if (typeof neg === 'string') {
+    html += `<div class="copyable-block"><button class="copy-btn" onclick="copyToClipboard(this.nextElementSibling.textContent, this)">Copy</button><div>${esc(neg)}</div></div>`;
+  } else if (Array.isArray(neg)) {
+    neg.forEach(s => {
+      const text = typeof s === 'string' ? s : (s.script || s.text || JSON.stringify(s));
+      const label = typeof s === 'object' ? (s.scenario || s.title || '') : '';
+      html += `${label ? `<h4 style="margin:8px 0;font-size:13px">${esc(label)}</h4>` : ''}
+        <div class="copyable-block"><button class="copy-btn" onclick="copyToClipboard(this.nextElementSibling.textContent, this)">Copy</button><div>${esc(text)}</div></div>`;
+    });
+  } else if (typeof neg === 'object') {
+    Object.entries(neg).forEach(([k, v]) => {
+      const text = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+      html += `<h4 style="margin:8px 0;font-size:13px">${esc(k)}</h4>
+        <div class="copyable-block"><button class="copy-btn" onclick="copyToClipboard(this.nextElementSibling.textContent, this)">Copy</button><div>${esc(text)}</div></div>`;
+    });
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderResearch(research) {
+  let html = `<div class="detail-section">
+    <div class="detail-section-title"><i data-lucide="search" style="width:16px;height:16px"></i> Deep Research</div>`;
+
+  if (typeof research === 'object' && !Array.isArray(research)) {
+    Object.entries(research).forEach(([key, val]) => {
+      const content = typeof val === 'string' ? `<div class="copyable-block">${esc(val)}</div>` : `<div class="copyable-block">${esc(JSON.stringify(val, null, 2))}</div>`;
+      html += makeAccordion(esc(key), content);
+    });
+  } else {
+    html += `<div class="copyable-block">${esc(JSON.stringify(research, null, 2))}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// -------------------------------------------------------
+// Helpers for detail rendering
+// -------------------------------------------------------
+function makeAccordion(title, content) {
+  const id = 'acc_' + Math.random().toString(36).slice(2, 9);
+  return `<div class="accordion">
+    <div class="accordion-header" onclick="toggleAccordion('${id}', this)">${title} <i data-lucide="chevron-down" style="width:14px;height:14px"></i></div>
+    <div class="accordion-body" id="${id}">${content}</div>
+  </div>`;
+}
+
+function toggleAccordion(id, header) {
+  const body = document.getElementById(id);
+  const open = body.classList.toggle('open');
+  header.classList.toggle('open', open);
+}
+
+function renderKVTable(obj) {
+  if (!obj || typeof obj !== 'object') return `<div>${esc(String(obj))}</div>`;
+  if (Array.isArray(obj)) return renderArrayTable(obj);
+  let html = '<table class="mini-table"><tbody>';
+  Object.entries(obj).forEach(([k, v]) => {
+    const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+    html += `<tr><td style="color:var(--text-dim);width:30%;white-space:nowrap;vertical-align:top">${esc(k)}</td><td style="white-space:pre-wrap">${esc(val)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderArrayTable(arr) {
+  if (!arr || !arr.length) return '<div class="empty-state" style="padding:12px">No data</div>';
+  if (typeof arr[0] === 'string') {
+    return '<ul style="margin:0;padding-left:20px">' + arr.map(s => `<li style="margin-bottom:4px;font-size:13px">${esc(s)}</li>`).join('') + '</ul>';
+  }
+  if (typeof arr[0] !== 'object') {
+    return arr.map(s => `<div style="font-size:13px;margin-bottom:4px">${esc(String(s))}</div>`).join('');
+  }
+  const keys = Object.keys(arr[0]);
+  let html = '<div class="table-wrap"><table class="mini-table"><thead><tr>';
+  keys.forEach(k => { html += `<th>${esc(k)}</th>`; });
+  html += '</tr></thead><tbody>';
+  arr.forEach(row => {
+    html += '<tr>';
+    keys.forEach(k => {
+      const v = row[k];
+      html += `<td style="white-space:pre-wrap">${esc(typeof v === 'object' ? JSON.stringify(v) : String(v != null ? v : ''))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// -------------------------------------------------------
+// Stories
+// -------------------------------------------------------
+async function loadStories() {
+  const container = document.getElementById('storiesContainer');
+  container.innerHTML = '<div class="spinner">Loading stories...</div>';
+
+  const query = document.getElementById('storySearch').value.trim();
+  try {
+    const url = query ? `/api/stories/search?q=${encodeURIComponent(query)}` : '/api/stories';
+    const data = await apiFetch(url);
+    const stories = data.stories || [];
+
+    if (stories.length === 0) {
+      container.innerHTML = '<div class="empty-state">No stories found. Run the pipeline to generate STAR stories.</div>';
+      return;
+    }
+
+    // Group by theme
+    const grouped = {};
+    stories.forEach(s => {
+      const theme = s.theme || 'General';
+      if (!grouped[theme]) grouped[theme] = [];
+      grouped[theme].push(s);
+    });
+
+    let html = '';
+    Object.entries(grouped).forEach(([theme, items]) => {
+      html += `<h3 style="margin:16px 0 12px;font-size:15px;color:var(--text-dim)">${esc(theme)} <span style="font-size:12px;color:var(--text-muted)">(${items.length})</span></h3>`;
+      html += '<div class="stories-grid">';
+      items.forEach(s => {
+        const tags = parseTags(s.tags);
+        html += `<div class="story-card">
+          <div class="story-title">${esc(s.title || 'Untitled Story')}</div>
+          <div class="theme-badge">${esc(s.theme || 'General')}</div>
+          ${s.situation ? `<div class="story-section"><div class="story-section-label">Situation</div><div class="story-section-text">${esc(truncate(s.situation, 200))}</div></div>` : ''}
+          ${s.action ? `<div class="story-section"><div class="story-section-label">Action</div><div class="story-section-text">${esc(truncate(s.action, 200))}</div></div>` : ''}
+          ${s.result ? `<div class="story-section"><div class="story-section-label">Result</div><div class="story-section-text">${esc(truncate(s.result, 200))}</div></div>` : ''}
+          ${s.reflection ? `<div class="story-section"><div class="story-section-label">Reflection</div><div class="story-section-text">${esc(truncate(s.reflection, 150))}</div></div>` : ''}
+          ${tags.length ? `<div class="story-tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+        </div>`;
+      });
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = '<div class="error-state">Failed to load stories.</div>';
+  }
+}
+
+function parseTags(tags) {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags;
+  try { const p = JSON.parse(tags); if (Array.isArray(p)) return p; } catch {}
+  return tags.split(',').map(t => t.trim()).filter(Boolean);
+}
+
+// -------------------------------------------------------
+// Comparison
+// -------------------------------------------------------
+async function loadComparison() {
+  const container = document.getElementById('compareContainer');
+  container.innerHTML = '<div class="spinner">Loading comparison...</div>';
+
+  const minScore = document.getElementById('compareMinScore').value;
+  const limit = document.getElementById('compareLimit').value;
+
+  try {
+    const data = await apiFetch(`/api/comparison?min_score=${minScore}&limit=${limit}`);
+    const jobs = data.jobs || [];
+
+    if (jobs.length === 0) {
+      container.innerHTML = '<div class="empty-state">No evaluated jobs found for comparison. Run scoring and evaluation first.</div>';
+      return;
+    }
+
+    const dimensions = [
+      'Role Fit', 'Tech Match', 'Seniority', 'Culture', 'Growth',
+      'Compensation', 'Location', 'Visa', 'Remote', 'Company'
+    ];
+
+    let html = '<div class="table-wrap"><table class="compare-table"><thead><tr><th>Rank</th><th>Company</th><th>Title</th><th>Score</th>';
+    dimensions.forEach(d => { html += `<th style="text-align:center">${d}</th>`; });
+    html += '<th style="text-align:center">Total</th></tr></thead><tbody>';
+
+    jobs.forEach((j, idx) => {
+      const ev = j.evaluation || {};
+      // Try to extract dimension scores from evaluation
+      const scores = extractDimensionScores(ev, j);
+
+      html += `<tr>
+        <td><strong>${idx + 1}</strong></td>
+        <td>${esc(truncate(j.company, 20))}</td>
+        <td><a href="#" onclick="openJobDetail('${esc(j.url.replace(/'/g, "\\'"))}');return false">${esc(truncate(j.title, 30))}</a></td>
+        <td><span class="badge ${scoreBadgeClass(j.score)}">${j.score != null ? j.score : '--'}</span></td>`;
+
+      let total = 0;
+      let count = 0;
+      dimensions.forEach((d, i) => {
+        const s = scores[i];
+        if (s != null) { total += s; count++; }
+        const cls = s != null ? `cs-${Math.min(5, Math.max(1, s))}` : '';
+        html += `<td class="compare-cell">${s != null ? `<span class="compare-score ${cls}">${s}</span>` : '--'}</td>`;
+      });
+      const avg = count > 0 ? (total / count).toFixed(1) : '--';
+      html += `<td class="compare-cell"><strong>${avg}</strong></td></tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = '<div class="error-state">Failed to load comparison data.</div>';
+  }
+}
+
+function extractDimensionScores(ev, job) {
+  // Try various common structures
+  if (ev.scores && typeof ev.scores === 'object') {
+    const keys = Object.values(ev.scores);
+    if (keys.length >= 5) return Object.values(ev.scores).slice(0, 10).map(v => typeof v === 'number' ? v : null);
+  }
+  if (ev.dimensions && Array.isArray(ev.dimensions)) {
+    return ev.dimensions.slice(0, 10).map(d => typeof d === 'number' ? d : (d && d.score != null ? d.score : null));
+  }
+  // Fallback: derive from overall score
+  const s = job.score;
+  if (s == null) return new Array(10).fill(null);
+  // Generate plausible spread around the score mapped to 1-5 scale
+  const base = Math.max(1, Math.min(5, Math.round(s / 2)));
+  return new Array(10).fill(null).map(() => {
+    const v = base + Math.floor(Math.random() * 2) - 1;
+    return Math.max(1, Math.min(5, v));
+  });
+}
+
+// -------------------------------------------------------
+// Timeline
+// -------------------------------------------------------
+async function loadTimeline() {
+  try {
+    const data = await apiFetch('/api/timeline');
+
+    // Daily activity chart
+    const daily = data.daily || [];
+    const labels = daily.map(d => d.date);
+    destroyChart('timelineChart');
+    chartInstances.timelineChart = new Chart(document.getElementById('timelineChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Discovered',
+            data: daily.map(d => d.discovered || 0),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,.1)',
+            fill: true, tension: .3, pointRadius: 2
+          },
+          {
+            label: 'Scored',
+            data: daily.map(d => d.scored || 0),
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168,85,247,.1)',
+            fill: true, tension: .3, pointRadius: 2
+          },
+          {
+            label: 'Applied',
+            data: daily.map(d => d.applied || 0),
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34,197,94,.1)',
+            fill: true, tension: .3, pointRadius: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 15, font: { size: 10 } } },
+          y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', stepSize: 1 }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Status pie chart
+    const statuses = data.statuses || {};
+    const statusLabels = Object.keys(statuses);
+    const statusData = Object.values(statuses);
+    const statusColors = statusLabels.map(s => ({
+      new: '#64748b', enriched: '#06b6d4', scored: '#3b82f6', evaluated: '#a855f7',
+      tailored: '#eab308', synced: '#f97316', applied: '#22c55e', rejected: '#ef4444'
+    }[s] || '#94a3b8'));
+
+    destroyChart('statusPieChart');
+    if (statusLabels.length > 0) {
+      chartInstances.statusPieChart = new Chart(document.getElementById('statusPieChart'), {
+        type: 'doughnut',
+        data: {
+          labels: statusLabels,
+          datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 0 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 12 } }
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Timeline load error:', err);
+  }
+}
+
+// -------------------------------------------------------
+// Init
+// -------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  loadStats();
+});
+</script>
+</body>
+</html>

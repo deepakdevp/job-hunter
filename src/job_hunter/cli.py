@@ -45,6 +45,45 @@ def init_cmd():
     interactive_init()
 
 
+@cli.command("dashboard")
+@click.option("--port", "-p", default=8420, type=int, help="Port to serve on")
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--no-open", is_flag=True, help="Don't auto-open browser")
+@click.pass_context
+def dashboard_cmd(ctx, port, host, no_open):
+    """Launch the web dashboard to monitor jobs, evaluations, and applications."""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]Dashboard requires fastapi + uvicorn. Install with:[/]")
+        console.print("[yellow]  pip install job-hunter\\[dashboard][/]")
+        raise SystemExit(1)
+
+    from job_hunter.dashboard.app import create_app
+
+    data_dir = ctx.obj["data_dir"]
+    config_dir = ctx.obj["config_dir"]
+    db_path = data_dir / "jobs.db"
+
+    if not db_path.exists():
+        console.print("[yellow]No jobs database found. Run 'hunt discover' first.[/]")
+        console.print(f"[dim]Expected at: {db_path}[/]")
+        raise SystemExit(1)
+
+    app = create_app(db_path=db_path, config_dir=config_dir)
+
+    url = f"http://{host}:{port}"
+    console.print("\n[bold green]Job Hunter Dashboard[/]")
+    console.print(f"[cyan]{url}[/]\n")
+    console.print("[dim]Press Ctrl+C to stop[/]\n")
+
+    if not no_open:
+        import webbrowser
+        webbrowser.open(url)
+
+    uvicorn.run(app, host=host, port=port, log_level="warning")
+
+
 @cli.command()
 @click.pass_context
 def doctor(ctx):

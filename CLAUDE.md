@@ -39,6 +39,11 @@ hunt stories add --title T --theme T  # manually add a story
 hunt evaluate-project "RAG chatbot"   # score a project idea (BUILD/SKIP/PIVOT)
 hunt evaluate-training "AWS cert"     # evaluate a course/cert (DO/SKIP/TIMEBOX)
 
+# Dashboard
+hunt dashboard                        # launch web dashboard at http://127.0.0.1:8420
+hunt dashboard --port 9000            # custom port
+hunt dashboard --no-open              # don't auto-open browser
+
 # Notion Sync
 hunt sync init --page-id ID           # initialize Notion database
 hunt sync push                        # push jobs to Notion
@@ -120,6 +125,10 @@ src/job_hunter/
 
   outreach/            # LinkedIn outreach generation
     generator.py       # 3-sentence messages (<300 chars)
+
+  dashboard/           # Web dashboard
+    app.py             # FastAPI backend (10 API endpoints)
+    static/index.html  # Single-file frontend (dark theme, 6 tabs, charts)
 
   negotiate/           # Negotiation intelligence
     intelligence.py    # Comp data + word-for-word scripts
