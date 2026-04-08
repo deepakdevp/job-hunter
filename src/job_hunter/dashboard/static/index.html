@@ -314,13 +314,21 @@ tr:last-child td { border-bottom: none; }
 .badge-score-low { background: rgba(239,68,68,.15); color: var(--red); }
 
 .badge-status-new { background: rgba(100,116,139,.2); color: var(--text-dim); }
-.badge-status-enriched { background: rgba(6,182,212,.15); color: var(--cyan); }
-.badge-status-scored { background: rgba(59,130,246,.15); color: var(--accent); }
+.badge-status-enriched { background: rgba(59,130,246,.15); color: var(--accent); }
+.badge-status-scored { background: rgba(99,102,241,.15); color: #818cf8; }
 .badge-status-evaluated { background: rgba(168,85,247,.15); color: var(--purple); }
-.badge-status-tailored { background: rgba(234,179,8,.15); color: var(--yellow); }
-.badge-status-synced { background: rgba(249,115,22,.15); color: var(--orange); }
+.badge-status-tailored { background: rgba(6,182,212,.15); color: var(--cyan); }
+.badge-status-synced { background: rgba(20,184,166,.15); color: #2dd4bf; }
 .badge-status-applied { background: rgba(34,197,94,.15); color: var(--green); }
 .badge-status-rejected { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-status-filtered { background: rgba(100,116,139,.12); color: var(--text-muted); }
+.badge-status-apply_failed { background: rgba(249,115,22,.15); color: var(--orange); }
+.badge-status-closed { background: rgba(100,116,139,.15); color: var(--text-muted); text-decoration: line-through; }
+.badge-status-discarded { background: rgba(239,68,68,.1); color: #f87171; text-decoration: line-through; opacity: .7; }
+.badge-status-interviewing { background: rgba(234,179,8,.18); color: var(--yellow); }
+.badge-status-offered { background: rgba(132,204,22,.2); color: #a3e635; }
+.badge-status-apply_pending { background: rgba(59,130,246,.15); color: var(--accent); animation: badgePulse 1.5s ease-in-out infinite; }
+@keyframes badgePulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
 /* Filter bar */
 .filter-bar {
@@ -686,6 +694,131 @@ tr:last-child td { border-bottom: none; }
   color: var(--purple);
   margin-bottom: 8px;
 }
+
+/* Status select in table */
+.status-select-sm {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  max-width: 110px;
+}
+.status-select-sm:focus { border-color: var(--accent); }
+
+/* Action buttons in table */
+.btn-apply { background: rgba(34,197,94,.15); color: var(--green); border-color: rgba(34,197,94,.3); }
+.btn-apply:hover { background: rgba(34,197,94,.25); border-color: var(--green); }
+.btn-discard { background: rgba(239,68,68,.1); color: #f87171; border-color: rgba(239,68,68,.2); }
+.btn-discard:hover { background: rgba(239,68,68,.2); border-color: var(--red); }
+.btn-interview { background: rgba(234,179,8,.12); color: var(--yellow); border-color: rgba(234,179,8,.3); }
+.btn-interview:hover { background: rgba(234,179,8,.22); border-color: var(--yellow); }
+.btn-offered { background: rgba(132,204,22,.12); color: #a3e635; border-color: rgba(132,204,22,.3); }
+.btn-offered:hover { background: rgba(132,204,22,.22); border-color: #a3e635; }
+.btn-outline-red { background: transparent; color: var(--red); border-color: var(--red); }
+.btn-outline-red:hover { background: rgba(239,68,68,.1); }
+
+/* Batch action bar */
+.batch-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 2px solid var(--accent);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 200;
+  box-shadow: 0 -4px 16px rgba(0,0,0,.4);
+  animation: slideUp .2s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.batch-bar .batch-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 8px;
+}
+.batch-bar .btn { padding: 6px 14px; font-size: 12px; }
+
+/* Detail action bar */
+.detail-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.detail-action-bar select {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.detail-action-bar select:focus { border-color: var(--accent); }
+.detail-action-bar .separator {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* Note input */
+.note-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.note-input-wrap input {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  width: 220px;
+  outline: none;
+}
+.note-input-wrap input:focus { border-color: var(--accent); }
+
+/* Notes section */
+.notes-section {
+  margin-bottom: 24px;
+}
+.note-item {
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* Toast error */
+.toast-error {
+  background: var(--red);
+}
+
+/* Checkbox in table */
+.row-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
 </style>
 </head>
 <body>
@@ -783,6 +916,13 @@ tr:last-child td { border-bottom: none; }
           <option value="synced">Synced</option>
           <option value="applied">Applied</option>
           <option value="rejected">Rejected</option>
+          <option value="filtered">Filtered</option>
+          <option value="apply_failed">Apply Failed</option>
+          <option value="closed">Closed</option>
+          <option value="discarded">Discarded</option>
+          <option value="interviewing">Interviewing</option>
+          <option value="offered">Offered</option>
+          <option value="apply_pending">Apply Pending</option>
         </select>
       </label>
       <label>Min Score <span class="score-value" id="minScoreVal">0</span>
@@ -878,6 +1018,8 @@ let autoRefreshEnabled = false;
 let autoRefreshTimer = null;
 let currentDetailUrl = null;
 const chartInstances = {};
+const selectedJobs = new Set();
+const ALL_STATUSES = ['new','enriched','scored','evaluated','tailored','synced','applied','rejected','filtered','apply_failed','closed','discarded','interviewing','offered','apply_pending'];
 
 // -------------------------------------------------------
 // Utilities
@@ -939,12 +1081,12 @@ async function apiFetch(path) {
   return resp.json();
 }
 
-function showToast(msg) {
+function showToast(msg, isError) {
   const t = document.createElement('div');
-  t.className = 'toast';
+  t.className = 'toast' + (isError ? ' toast-error' : '');
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2000);
+  setTimeout(() => t.remove(), 2500);
 }
 
 function copyToClipboard(text, btn) {
@@ -960,6 +1102,133 @@ function copyToClipboard(text, btn) {
 
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function statusOptions(selected) {
+  return ALL_STATUSES.map(s => `<option value="${s}" ${s === selected ? 'selected' : ''}>${s}</option>`).join('');
+}
+
+// -------------------------------------------------------
+// Job Action API calls
+// -------------------------------------------------------
+async function updateJobStatus(url, status) {
+  try {
+    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    showToast('Status updated to ' + status);
+    refreshAfterAction();
+  } catch (err) {
+    showToast('Failed to update status: ' + err.message, true);
+  }
+}
+
+async function discardJob(url) {
+  try {
+    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/discard', { method: 'POST' });
+    if (!resp.ok) throw new Error(await resp.text());
+    showToast('Job discarded');
+    refreshAfterAction();
+  } catch (err) {
+    showToast('Failed to discard job: ' + err.message, true);
+  }
+}
+
+async function applyJob(url) {
+  try {
+    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/apply', { method: 'POST' });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    showToast(data.message || 'Queued for apply');
+    refreshAfterAction();
+  } catch (err) {
+    showToast('Failed to queue apply: ' + err.message, true);
+  }
+}
+
+async function addJobNote(url, note) {
+  try {
+    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    showToast('Note added');
+    refreshAfterAction();
+  } catch (err) {
+    showToast('Failed to add note: ' + err.message, true);
+  }
+}
+
+async function batchUpdateStatus(status) {
+  if (selectedJobs.size === 0) return;
+  try {
+    const resp = await fetch('/api/jobs/batch-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: Array.from(selectedJobs), status })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    showToast(`Updated ${data.updated} jobs to ${status}`);
+    selectedJobs.clear();
+    refreshAfterAction();
+  } catch (err) {
+    showToast('Batch update failed: ' + err.message, true);
+  }
+}
+
+function refreshAfterAction() {
+  if (currentTab === 'jobs') loadJobs(currentPage);
+  else if (currentTab === 'detail' && currentDetailUrl) loadJobDetail(currentDetailUrl);
+  else refreshCurrentTab();
+}
+
+// Batch selection helpers
+function toggleJobSelect(url, checkbox) {
+  if (checkbox.checked) selectedJobs.add(url);
+  else selectedJobs.delete(url);
+  updateBatchBar();
+}
+
+function toggleSelectAll(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.row-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+    const url = cb.dataset.url;
+    if (masterCheckbox.checked) selectedJobs.add(url);
+    else selectedJobs.delete(url);
+  });
+  updateBatchBar();
+}
+
+function updateBatchBar() {
+  let bar = document.getElementById('batchBar');
+  if (selectedJobs.size === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'batch-bar';
+    bar.id = 'batchBar';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `
+    <span class="batch-count">${selectedJobs.size} job${selectedJobs.size > 1 ? 's' : ''} selected</span>
+    <button class="btn btn-discard" onclick="batchUpdateStatus('discarded')">Discard Selected</button>
+    <button class="btn btn-apply" onclick="batchUpdateStatus('applied')">Mark Applied</button>
+    <button class="btn btn-interview" onclick="batchUpdateStatus('interviewing')">Mark Interviewing</button>
+    <select class="status-select-sm" id="batchStatusSelect" style="padding:6px 10px;font-size:12px">
+      ${statusOptions('')}
+    </select>
+    <button class="btn btn-primary" onclick="batchUpdateStatus(document.getElementById('batchStatusSelect').value)">Apply Status</button>
+    <button class="btn" onclick="selectedJobs.clear();document.querySelectorAll('.row-checkbox').forEach(c=>c.checked=false);document.querySelector('.select-all-checkbox')&&(document.querySelector('.select-all-checkbox').checked=false);updateBatchBar()">Clear</button>
+  `;
 }
 
 // -------------------------------------------------------
@@ -1185,8 +1454,12 @@ async function loadJobs(page) {
 }
 
 function renderJobsTable(jobs) {
+  selectedJobs.clear();
+  updateBatchBar();
+
   let html = `<div class="table-wrap"><table>
     <thead><tr>
+      <th><input type="checkbox" class="row-checkbox select-all-checkbox" onchange="toggleSelectAll(this)"></th>
       <th>Score</th><th>Title</th><th>Company</th><th>Location</th>
       <th>Source</th><th>Status</th><th>Visa</th><th>Remote</th>
       <th>Posted</th><th>Actions</th>
@@ -1201,8 +1474,11 @@ function renderJobsTable(jobs) {
     const posted = j.posted_date
       ? `<span data-tooltip="${formatDate(j.posted_date)}">${timeAgo(j.posted_date)}</span>`
       : (j.found_date ? `<span data-tooltip="${formatDate(j.found_date)}">${timeAgo(j.found_date)}</span>` : '--');
+    const safeUrl = esc(j.url.replace(/'/g, "\\'"));
+    const canApply = (j.status === 'tailored' || j.status === 'synced');
 
-    html += `<tr style="cursor:pointer" onclick="openJobDetail('${esc(j.url.replace(/'/g, "\\'"))}')">
+    html += `<tr style="cursor:pointer" onclick="openJobDetail('${safeUrl}')">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" data-url="${esc(j.url)}" onchange="toggleJobSelect('${safeUrl}', this)"></td>
       <td><span class="badge ${scoreClass}">${j.score != null ? j.score : '--'}</span></td>
       <td>${esc(truncate(j.title, 50))}</td>
       <td>${esc(truncate(j.company, 30))}</td>
@@ -1212,10 +1488,15 @@ function renderJobsTable(jobs) {
       <td>${visa}</td>
       <td>${remote}</td>
       <td>${posted}</td>
-      <td class="action-btns" onclick="event.stopPropagation()">
-        <button class="btn btn-sm" onclick="openJobDetail('${esc(j.url.replace(/'/g, "\\'"))}')">View</button>
+      <td class="action-btns" onclick="event.stopPropagation()" style="min-width:220px">
+        <button class="btn btn-sm" onclick="openJobDetail('${safeUrl}')">View</button>
+        ${canApply ? `<button class="btn btn-sm btn-apply" onclick="applyJob('${safeUrl}')">Apply</button>` : ''}
+        <button class="btn btn-sm btn-discard" onclick="discardJob('${safeUrl}')">Discard</button>
+        <select class="status-select-sm" onchange="updateJobStatus('${safeUrl}', this.value)">
+          ${statusOptions(j.status || 'new')}
+        </select>
         ${j.has_resume ? `<button class="btn btn-sm" onclick="window.open('/api/jobs/${encodeJobUrl(j.url)}/resume')">Resume</button>` : ''}
-        ${j.has_cover_letter ? `<button class="btn btn-sm" onclick="viewCoverLetter('${esc(j.url.replace(/'/g, "\\'"))}')">CL</button>` : ''}
+        ${j.has_cover_letter ? `<button class="btn btn-sm" onclick="viewCoverLetter('${safeUrl}')">CL</button>` : ''}
       </td>
     </tr>`;
   }
@@ -1289,8 +1570,31 @@ function renderJobDetail(data) {
   const scoreClass = scoreBadgeClass(j.score);
   const statusClass = statusBadgeClass(j.status);
 
+  const safeUrl = esc(j.url.replace(/'/g, "\\'"));
+  const canApply = (j.status === 'tailored' || j.status === 'synced');
+
+  // Extract notes from tags
+  const rawTags = j.tags || '';
+  const noteLines = rawTags.split('\n').filter(l => l.trim().startsWith('[NOTE]'));
+
   let html = `<div class="detail-panel">
     <div class="back-btn" onclick="switchTab('jobs')"><i data-lucide="arrow-left" style="width:14px;height:14px"></i> Back to Jobs</div>
+
+    <!-- Action Bar -->
+    <div class="detail-action-bar">
+      <select onchange="updateJobStatus('${safeUrl}', this.value)" style="font-weight:600">
+        ${statusOptions(j.status || 'new')}
+      </select>
+      ${canApply ? `<button class="btn btn-apply" onclick="applyJob('${safeUrl}')"><i data-lucide="send" style="width:12px;height:12px"></i> Mark Applied</button>` : `<button class="btn btn-apply" onclick="updateJobStatus('${safeUrl}','applied')"><i data-lucide="send" style="width:12px;height:12px"></i> Mark Applied</button>`}
+      <button class="btn btn-outline-red" onclick="discardJob('${safeUrl}')"><i data-lucide="trash-2" style="width:12px;height:12px"></i> Discard</button>
+      <button class="btn btn-interview" onclick="updateJobStatus('${safeUrl}','interviewing')"><i data-lucide="message-circle" style="width:12px;height:12px"></i> Mark Interviewing</button>
+      <button class="btn btn-offered" onclick="updateJobStatus('${safeUrl}','offered')"><i data-lucide="award" style="width:12px;height:12px"></i> Mark Offered</button>
+      <div class="separator"></div>
+      <div class="note-input-wrap" id="noteWrap">
+        <input type="text" id="noteInput" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addJobNote('${safeUrl}',this.value);this.value='';}">
+        <button class="btn btn-sm btn-primary" onclick="const inp=document.getElementById('noteInput');addJobNote('${safeUrl}',inp.value);inp.value='';">Save Note</button>
+      </div>
+    </div>
 
     <div class="detail-header">
       <div>
@@ -1301,10 +1605,15 @@ function renderJobDetail(data) {
           <span class="badge ${statusClass}">${esc(j.status || 'new')}</span>
           ${j.url ? `<a href="${esc(j.url)}" target="_blank" class="btn btn-sm">View Posting <i data-lucide="external-link" style="width:10px;height:10px"></i></a>` : ''}
           ${j.resume_path ? `<button class="btn btn-sm" onclick="window.open('/api/jobs/${encodeJobUrl(j.url)}/resume')">Download Resume</button>` : ''}
-          ${j.cover_letter_path ? `<button class="btn btn-sm" onclick="viewCoverLetter('${esc(j.url.replace(/'/g, "\\'"))}')">View Cover Letter</button>` : ''}
+          ${j.cover_letter_path ? `<button class="btn btn-sm" onclick="viewCoverLetter('${safeUrl}')">View Cover Letter</button>` : ''}
         </div>
       </div>
     </div>
+
+    ${noteLines.length > 0 ? `<div class="notes-section">
+      <div class="detail-section-title"><i data-lucide="sticky-note" style="width:16px;height:16px"></i> Notes</div>
+      ${noteLines.map(n => `<div class="note-item">${esc(n.replace('[NOTE]','').trim())}</div>`).join('')}
+    </div>` : ''}
 
     <div class="info-grid">
       <div class="info-item"><div class="info-label">Source</div><div class="info-value">${esc(j.source || '--')}</div></div>
@@ -1781,8 +2090,10 @@ async function loadTimeline() {
     const statusLabels = Object.keys(statuses);
     const statusData = Object.values(statuses);
     const statusColors = statusLabels.map(s => ({
-      new: '#64748b', enriched: '#06b6d4', scored: '#3b82f6', evaluated: '#a855f7',
-      tailored: '#eab308', synced: '#f97316', applied: '#22c55e', rejected: '#ef4444'
+      new: '#64748b', enriched: '#3b82f6', scored: '#818cf8', evaluated: '#a855f7',
+      tailored: '#06b6d4', synced: '#2dd4bf', applied: '#22c55e', rejected: '#ef4444',
+      filtered: '#475569', apply_failed: '#f97316', closed: '#6b7280',
+      discarded: '#f87171', interviewing: '#eab308', offered: '#a3e635', apply_pending: '#60a5fa'
     }[s] || '#94a3b8'));
 
     destroyChart('statusPieChart');

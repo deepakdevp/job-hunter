@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,6 +32,13 @@ _VALID_STATUSES = {
     "synced",
     "applied",
     "rejected",
+    "filtered",
+    "apply_failed",
+    "closed",
+    "discarded",
+    "interviewing",
+    "offered",
+    "apply_pending",
 }
 _VALID_SORT_FIELDS = {
     "score",
@@ -82,6 +90,24 @@ def _score_bucket(score: int | None) -> str:
     if score <= 8:
         return "7-8"
     return "9-10"
+
+
+# ---------------------------------------------------------------------------
+# Pydantic request models
+# ---------------------------------------------------------------------------
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+class NoteUpdate(BaseModel):
+    note: str
+
+
+class BatchStatusUpdate(BaseModel):
+    urls: list[str]
+    status: str
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +342,25 @@ class _DashboardDB:
                 }
             )
         return results
+
+    # -- write helpers -------------------------------------------------------
+
+    def update_status(self, url: str, status: str) -> bool:
+        """Update a job's status. Returns True if job existed."""
+        cursor = self.conn.execute("UPDATE jobs SET status = ? WHERE url = ?", (status, url))
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def add_note(self, url: str, note: str) -> bool:
+        """Append a note to job's tags field. Returns True if job existed."""
+        row = self.conn.execute("SELECT tags FROM jobs WHERE url = ?", (url,)).fetchone()
+        if row is None:
+            return False
+        existing = row["tags"] or ""
+        updated = f"{existing}\n[NOTE] {note}" if existing else f"[NOTE] {note}"
+        self.conn.execute("UPDATE jobs SET tags = ? WHERE url = ?", (updated, url))
+        self.conn.commit()
+        return True
 
     def close(self) -> None:
         if self._conn is not None:
@@ -559,6 +604,90 @@ def create_app(
             return {"jobs": []}
         except sqlite3.OperationalError:
             return {"jobs": []}
+
+    # -----------------------------------------------------------------------
+    # Action (write) endpoints
+    # -----------------------------------------------------------------------
+
+    @app.patch("/api/jobs/{url_encoded:path}/status")
+    async def api_update_status(
+        url_encoded: str,
+        body: StatusUpdate,
+        db: _DashboardDB = Depends(get_db),
+    ):
+        if body.status not in _VALID_STATUSES:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+        url = _decode_url(url_encoded)
+        try:
+            found = db.update_status(url, body.status)
+        except sqlite3.OperationalError as exc:
+            raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+        if not found:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"ok": True, "url": url, "new_status": body.status}
+
+    @app.post("/api/jobs/{url_encoded:path}/discard")
+    async def api_discard_job(
+        url_encoded: str,
+        db: _DashboardDB = Depends(get_db),
+    ):
+        url = _decode_url(url_encoded)
+        try:
+            found = db.update_status(url, "discarded")
+        except sqlite3.OperationalError as exc:
+            raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+        if not found:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"ok": True, "url": url, "new_status": "discarded"}
+
+    @app.post("/api/jobs/{url_encoded:path}/apply")
+    async def api_apply_job(
+        url_encoded: str,
+        db: _DashboardDB = Depends(get_db),
+    ):
+        url = _decode_url(url_encoded)
+        try:
+            found = db.update_status(url, "apply_pending")
+        except sqlite3.OperationalError as exc:
+            raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+        if not found:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {
+            "ok": True,
+            "url": url,
+            "message": f"Queued for apply. Run: hunt apply --job-url {url} --confirm",
+        }
+
+    @app.post("/api/jobs/{url_encoded:path}/note")
+    async def api_add_note(
+        url_encoded: str,
+        body: NoteUpdate,
+        db: _DashboardDB = Depends(get_db),
+    ):
+        url = _decode_url(url_encoded)
+        try:
+            found = db.add_note(url, body.note)
+        except sqlite3.OperationalError as exc:
+            raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+        if not found:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"ok": True}
+
+    @app.post("/api/jobs/batch-status")
+    async def api_batch_status(
+        body: BatchStatusUpdate,
+        db: _DashboardDB = Depends(get_db),
+    ):
+        if body.status not in _VALID_STATUSES:
+            raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+        updated = 0
+        try:
+            for url in body.urls:
+                if db.update_status(url, body.status):
+                    updated += 1
+        except sqlite3.OperationalError as exc:
+            raise HTTPException(status_code=500, detail=f"Database error: {exc}")
+        return {"ok": True, "updated": updated}
 
     # -----------------------------------------------------------------------
     # Shutdown hook
