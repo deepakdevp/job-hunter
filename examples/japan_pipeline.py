@@ -32,7 +32,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeEl
 from rich.table import Table
 
 # ── Setup ───────────────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 JAPAN_DB_PATH = CONFIG_DIR / "japan_jobs.db"
 JAPAN_OUTPUT_DIR = CONFIG_DIR / "japan_output"
@@ -314,6 +314,7 @@ def stage_sync():
     japan_notion_marker = CONFIG_DIR / ".japan_notion_db_id"
     japan_db_id = None
 
+    is_fresh_db = False
     if japan_notion_marker.exists():
         japan_db_id = japan_notion_marker.read_text().strip()
         console.print(f"  Using existing Japan Notion DB: {japan_db_id[:12]}...")
@@ -323,6 +324,7 @@ def stage_sync():
         japan_db_id = notion.create_database(parent_page_id, title="Job Hunter Japan")
         japan_notion_marker.write_text(japan_db_id)
         console.print(f"  [green]Created: {japan_db_id}[/]")
+        is_fresh_db = True
 
     db = JobDB(JAPAN_DB_PATH)
 
@@ -340,7 +342,9 @@ def stage_sync():
                 prog_task = progress.add_task("Syncing", total=total)
             progress.update(prog_task, completed=done)
 
-        created, updated = push_jobs_to_notion(db, notion, on_progress=on_progress)
+        created, updated = push_jobs_to_notion(
+            db, notion, on_progress=on_progress, new_db_only=is_fresh_db
+        )
 
     db.close()
     console.print(f"[green bold]Synced: {created} created, {updated} updated[/]")

@@ -28,3 +28,5 @@ build/
 
 # Personal data
 docs/research/deepak-profile-master.md
+config/.japan_notion_db_id.bak
+output/

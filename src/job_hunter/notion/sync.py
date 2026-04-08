@@ -20,9 +20,11 @@ def push_jobs_to_notion(
     notion: NotionJobDB,
     drive: DriveUploader | None = None,
     on_progress=None,
+    new_db_only: bool = False,
 ) -> tuple[int, int]:
     """Push new/updated jobs from local DB to Notion.
 
+    If new_db_only=True, only push jobs that have never been synced (no notion_page_id).
     Returns (created_count, updated_count).
     """
     # Get all jobs that should be synced
@@ -40,6 +42,10 @@ def push_jobs_to_notion(
         "offer",
     ):
         all_jobs.extend(db.get_jobs_by_status(status))
+
+    # When syncing to a brand new DB, only push jobs that haven't been synced before
+    if new_db_only:
+        all_jobs = [j for j in all_jobs if not j.notion_page_id]
 
     total = len(all_jobs)
     created = 0

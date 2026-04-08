@@ -357,7 +357,10 @@ class NotionJobDB:
         if job.salary_raw:
             props["Salary Raw"] = {"rich_text": [{"text": {"content": job.salary_raw[:2000]}}]}
         if job.posted_date:
-            props["Posted Date"] = {"date": {"start": job.posted_date[:10]}}
+            # Only send if it looks like a real ISO date (YYYY-MM-DD), not "Posted Today" etc.
+            pd = job.posted_date[:10]
+            if len(pd) == 10 and pd[4] == "-" and pd[7] == "-" and pd[:4].isdigit():
+                props["Posted Date"] = {"date": {"start": pd}}
         if job.found_date:
             props["Found Date"] = {"date": {"start": job.found_date[:10]}}
         if resume_url:
