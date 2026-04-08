@@ -812,6 +812,162 @@ tr:last-child td { border-bottom: none; }
   background: var(--red);
 }
 
+/* Pipeline button */
+.btn-pipeline {
+  background: linear-gradient(135deg, #3b82f6, #a855f7);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity .15s;
+  position: relative;
+}
+.btn-pipeline:hover { opacity: .9; }
+
+/* Task badge */
+.task-badge-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.task-badge-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all .15s;
+}
+.task-badge-btn:hover { border-color: var(--accent); color: var(--text); }
+.task-count-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+.task-count-badge.hidden { display: none; }
+
+/* Dropdown panels */
+.dropdown-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  z-index: 300;
+  min-width: 280px;
+  padding: 16px;
+  display: none;
+  animation: fadeIn .15s ease;
+}
+.dropdown-panel.open { display: block; }
+.dropdown-panel h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+/* Pipeline modal checkboxes */
+.pipeline-stages label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.pipeline-stages input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+.pipeline-stages .btn { margin-top: 12px; width: 100%; justify-content: center; }
+
+/* Task list in dropdown */
+.task-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.task-list-item:last-child { border-bottom: none; }
+.task-status-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.task-status-icon.running { color: var(--accent); animation: spin .6s linear infinite; }
+.task-status-icon.completed { color: var(--green); }
+.task-status-icon.failed { color: var(--red); }
+.task-type { color: var(--text); font-weight: 500; }
+.task-status-text { color: var(--text-muted); margin-left: auto; }
+
+/* Action buttons for intelligence features */
+.btn-evaluate {
+  background: rgba(168,85,247,.15);
+  color: var(--purple);
+  border-color: rgba(168,85,247,.3);
+}
+.btn-evaluate:hover { background: rgba(168,85,247,.25); border-color: var(--purple); }
+.btn-outreach {
+  background: rgba(6,182,212,.15);
+  color: var(--cyan);
+  border-color: rgba(6,182,212,.3);
+}
+.btn-outreach:hover { background: rgba(6,182,212,.25); border-color: var(--cyan); }
+.btn-negotiate {
+  background: rgba(234,179,8,.12);
+  color: var(--yellow);
+  border-color: rgba(234,179,8,.3);
+}
+.btn-negotiate:hover { background: rgba(234,179,8,.22); border-color: var(--yellow); }
+.btn-compare-run {
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  font-weight: 600;
+}
+.btn-compare-run:hover { opacity: .9; }
+
+/* Inline spinner for buttons */
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+.btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
 /* Checkbox in table */
 .row-checkbox {
   width: 16px;
@@ -837,6 +993,35 @@ tr:last-child td { border-bottom: none; }
     <span class="nav-badge">Stories <strong id="navStories">--</strong></span>
   </div>
   <div class="nav-controls">
+    <div style="position:relative;display:inline-flex" id="pipelineWrap">
+      <button class="btn-pipeline" onclick="togglePipelineDropdown()">
+        <i data-lucide="play" style="width:12px;height:12px"></i> Run Pipeline
+      </button>
+      <div class="dropdown-panel" id="pipelineDropdown">
+        <h4>Run Pipeline Stages</h4>
+        <div class="pipeline-stages">
+          <label><input type="checkbox" class="pipeline-stage-cb" value="discover" checked> Discover</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="enrich" checked> Enrich</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="score" checked> Score</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="evaluate" checked> Evaluate</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="tailor" checked> Tailor</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="sync" checked> Sync</label>
+        </div>
+        <button class="btn btn-primary" onclick="runPipeline()" id="runPipelineBtn">
+          <i data-lucide="play" style="width:12px;height:12px"></i> Run
+        </button>
+      </div>
+    </div>
+    <div class="task-badge-wrap" id="taskBadgeWrap">
+      <button class="task-badge-btn" onclick="toggleTaskDropdown()">
+        <i data-lucide="list-checks" style="width:14px;height:14px"></i> Tasks
+        <span class="task-count-badge hidden" id="taskCountBadge">0</span>
+      </button>
+      <div class="dropdown-panel" id="taskDropdown" style="min-width:320px">
+        <h4>Background Tasks</h4>
+        <div id="taskListContainer"><div style="font-size:12px;color:var(--text-muted)">No tasks yet.</div></div>
+      </div>
+    </div>
     <label class="auto-refresh-toggle" onclick="toggleAutoRefresh()">
       <span>Auto-refresh</span>
       <div class="toggle-switch" id="refreshToggle"></div>
@@ -988,6 +1173,9 @@ tr:last-child td { border-bottom: none; }
           <option value="5">5</option>
         </select>
       </label>
+      <button class="btn btn-compare-run" id="btnRunComparison" onclick="runComparison()">
+        <i data-lucide="sparkles" style="width:12px;height:12px"></i> Run LLM Comparison
+      </button>
     </div>
     <div id="compareContainer"><div class="spinner">Loading comparison...</div></div>
   </div>
@@ -1594,6 +1782,10 @@ function renderJobDetail(data) {
         <input type="text" id="noteInput" placeholder="Add a note..." onkeydown="if(event.key==='Enter'){addJobNote('${safeUrl}',this.value);this.value='';}">
         <button class="btn btn-sm btn-primary" onclick="const inp=document.getElementById('noteInput');addJobNote('${safeUrl}',inp.value);inp.value='';">Save Note</button>
       </div>
+      <div class="separator"></div>
+      ${!evaluation ? `<button class="btn btn-evaluate" id="btnEvaluate" onclick="triggerEvaluate('${safeUrl}', this)"><i data-lucide="clipboard-check" style="width:12px;height:12px"></i> Evaluate</button>` : ''}
+      ${evaluation ? `<button class="btn btn-outreach" id="btnOutreach" onclick="triggerOutreach('${safeUrl}', this)"><i data-lucide="mail" style="width:12px;height:12px"></i> Generate Outreach</button>` : ''}
+      ${evaluation ? `<button class="btn btn-negotiate" id="btnNegotiate" onclick="triggerNegotiate('${safeUrl}', this)"><i data-lucide="handshake" style="width:12px;height:12px"></i> Negotiation Scripts</button>` : ''}
     </div>
 
     <div class="detail-header">
@@ -2118,11 +2310,197 @@ async function loadTimeline() {
 }
 
 // -------------------------------------------------------
+// Task Polling System
+// -------------------------------------------------------
+let activeTasks = {};
+
+async function triggerAction(endpoint, body, onComplete, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl._origHTML = btnEl.innerHTML;
+    btnEl.innerHTML = '<span class="btn-spinner"></span> Running...';
+  }
+  try {
+    const res = await fetch(`/api/actions/${endpoint}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.task_id) {
+      activeTasks[data.task_id] = {endpoint, onComplete, btnEl};
+      showToast(`${endpoint} started...`);
+      pollTask(data.task_id);
+      updateTaskBadge();
+    } else if (data.error) {
+      showToast(`Error: ${data.error}`, true);
+      restoreButton(btnEl);
+    }
+  } catch (err) {
+    showToast(`Failed to start ${endpoint}: ${err.message}`, true);
+    restoreButton(btnEl);
+  }
+}
+
+function restoreButton(btnEl) {
+  if (btnEl && btnEl._origHTML) {
+    btnEl.disabled = false;
+    btnEl.innerHTML = btnEl._origHTML;
+  }
+}
+
+async function pollTask(taskId) {
+  const interval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/actions/tasks/${taskId}`);
+      const task = await res.json();
+      if (task.status === 'completed') {
+        clearInterval(interval);
+        const taskInfo = activeTasks[taskId];
+        const onComplete = taskInfo?.onComplete;
+        const btnEl = taskInfo?.btnEl;
+        showToast(`${task.type || 'Task'} completed!`);
+        delete activeTasks[taskId];
+        updateTaskBadge();
+        restoreButton(btnEl);
+        if (onComplete) onComplete();
+        refreshTaskList();
+      } else if (task.status === 'failed') {
+        clearInterval(interval);
+        const taskInfo = activeTasks[taskId];
+        const btnEl = taskInfo?.btnEl;
+        showToast(`${task.type || 'Task'} failed: ${task.error || 'Unknown error'}`, true);
+        delete activeTasks[taskId];
+        updateTaskBadge();
+        restoreButton(btnEl);
+        refreshTaskList();
+      }
+    } catch (err) {
+      // Silently retry on network error
+    }
+  }, 3000);
+}
+
+function updateTaskBadge() {
+  const count = Object.keys(activeTasks).length;
+  const badge = document.getElementById('taskCountBadge');
+  if (badge) {
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
+  }
+}
+
+async function refreshTaskList() {
+  const container = document.getElementById('taskListContainer');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/actions/tasks');
+    const data = await res.json();
+    const tasks = data.tasks || [];
+    if (tasks.length === 0) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No tasks yet.</div>';
+      return;
+    }
+    // Show most recent first
+    const sorted = tasks.slice().reverse().slice(0, 20);
+    container.innerHTML = sorted.map(t => {
+      let iconClass = 'completed';
+      let iconName = 'check-circle';
+      if (t.status === 'running') { iconClass = 'running'; iconName = 'loader'; }
+      else if (t.status === 'failed') { iconClass = 'failed'; iconName = 'x-circle'; }
+      else if (t.status === 'pending') { iconClass = ''; iconName = 'clock'; }
+      return `<div class="task-list-item">
+        <i data-lucide="${iconName}" class="task-status-icon ${iconClass}" style="width:16px;height:16px"></i>
+        <span class="task-type">${esc(t.type || t.id || 'unknown')}</span>
+        <span class="task-status-text">${esc(t.status || 'unknown')}</span>
+      </div>`;
+    }).join('');
+    lucide.createIcons();
+  } catch (err) {
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">Failed to load tasks.</div>';
+  }
+}
+
+// -------------------------------------------------------
+// Dropdown toggles
+// -------------------------------------------------------
+function togglePipelineDropdown() {
+  const dd = document.getElementById('pipelineDropdown');
+  const taskDd = document.getElementById('taskDropdown');
+  if (taskDd) taskDd.classList.remove('open');
+  dd.classList.toggle('open');
+}
+
+function toggleTaskDropdown() {
+  const dd = document.getElementById('taskDropdown');
+  const pipeDd = document.getElementById('pipelineDropdown');
+  if (pipeDd) pipeDd.classList.remove('open');
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) refreshTaskList();
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', (e) => {
+  const pipeWrap = document.getElementById('pipelineWrap');
+  const taskWrap = document.getElementById('taskBadgeWrap');
+  if (pipeWrap && !pipeWrap.contains(e.target)) {
+    document.getElementById('pipelineDropdown')?.classList.remove('open');
+  }
+  if (taskWrap && !taskWrap.contains(e.target)) {
+    document.getElementById('taskDropdown')?.classList.remove('open');
+  }
+});
+
+// -------------------------------------------------------
+// Action triggers
+// -------------------------------------------------------
+function runPipeline() {
+  const checkboxes = document.querySelectorAll('.pipeline-stage-cb:checked');
+  const stages = Array.from(checkboxes).map(cb => cb.value);
+  if (stages.length === 0) { showToast('Select at least one stage', true); return; }
+  document.getElementById('pipelineDropdown').classList.remove('open');
+  const btn = document.getElementById('runPipelineBtn');
+  triggerAction('pipeline', {stages}, () => {
+    loadStats();
+    if (currentTab === 'overview') loadStats();
+    else if (currentTab === 'jobs') loadJobs();
+  }, btn);
+}
+
+function triggerEvaluate(jobUrl, btnEl) {
+  triggerAction('evaluate', {job_url: jobUrl, min_score: 0}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+  }, btnEl);
+}
+
+function triggerOutreach(jobUrl, btnEl) {
+  triggerAction('outreach', {job_url: jobUrl}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+  }, btnEl);
+}
+
+function triggerNegotiate(jobUrl, btnEl) {
+  triggerAction('negotiate', {job_url: jobUrl}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+  }, btnEl);
+}
+
+function runComparison() {
+  const minScore = parseInt(document.getElementById('compareMinScore').value);
+  const limit = parseInt(document.getElementById('compareLimit').value);
+  const btn = document.getElementById('btnRunComparison');
+  triggerAction('compare', {min_score: minScore, limit: limit}, () => {
+    loadComparison();
+  }, btn);
+}
+
+// -------------------------------------------------------
 // Init
 // -------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   loadStats();
+  updateTaskBadge();
 });
 </script>
 </body>

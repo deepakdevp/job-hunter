@@ -5,9 +5,12 @@ Serves both REST API endpoints and a static HTML dashboard.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sqlite3
+import uuid
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -16,6 +19,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+# ---------------------------------------------------------------------------
+# Background task tracking
+# ---------------------------------------------------------------------------
+
+_tasks: dict[str, dict] = {}  # task_id -> {status, result, error, type}
+_executor = ThreadPoolExecutor(max_workers=2)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -108,6 +118,235 @@ class NoteUpdate(BaseModel):
 class BatchStatusUpdate(BaseModel):
     urls: list[str]
     status: str
+
+
+class EvaluateRequest(BaseModel):
+    job_url: str | None = None
+    min_score: int = 5
+
+
+class OutreachRequest(BaseModel):
+    job_url: str
+
+
+class NegotiateRequest(BaseModel):
+    job_url: str
+
+
+class PipelineRequest(BaseModel):
+    stages: list[str] = ["discover", "enrich", "score", "evaluate", "tailor", "sync"]
+
+
+class CompareRequest(BaseModel):
+    min_score: int = 5
+    limit: int = 10
+
+
+# ---------------------------------------------------------------------------
+# LLM + config helper
+# ---------------------------------------------------------------------------
+
+
+def _get_llm_and_profile(config_dir):
+    """Load config, return (llm, profile) or raise."""
+    from job_hunter.config import load_config
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(config_dir)
+    llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
+    return llm, config.profile
+
+
+# ---------------------------------------------------------------------------
+# Background task runner functions
+# ---------------------------------------------------------------------------
+
+
+def _run_evaluate_task(task_id, db_path, config_dir, job_url, min_score):
+    """Run evaluation in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.database import JobDB
+        from job_hunter.evaluate.engine import run_evaluation
+        from job_hunter.stories.bank import add_stories_to_bank, extract_stories_from_evaluation
+
+        db = JobDB(db_path)
+        llm, profile = _get_llm_and_profile(config_dir)
+        evaluated, total = asyncio.run(
+            run_evaluation(db, profile, llm, min_score=min_score, job_url=job_url)
+        )
+
+        # Extract stories from evaluated jobs
+        stories_added = 0
+        for job in db.get_evaluated_jobs(min_score=min_score):
+            if job.evaluation:
+                try:
+                    eval_data = json.loads(job.evaluation)
+                    new_stories = asyncio.run(
+                        extract_stories_from_evaluation(eval_data, job.url)
+                    )
+                    if new_stories:
+                        stories_added += add_stories_to_bank(db_path, new_stories)
+                except Exception:
+                    pass
+        db.close()
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {
+                "evaluated": evaluated,
+                "total": total,
+                "stories_added": stories_added,
+            },
+            "type": "evaluate",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "evaluate"}
+
+
+def _run_outreach_task(task_id, db_path, config_dir, job_url):
+    """Run outreach generation in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.database import JobDB
+        from job_hunter.outreach.generator import run_outreach
+
+        db = JobDB(db_path)
+        llm, profile = _get_llm_and_profile(config_dir)
+        result = asyncio.run(run_outreach(db, profile, llm, job_url))
+        db.close()
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {
+                "targets": len(result.get("targets", [])),
+                "error": result.get("error"),
+            },
+            "type": "outreach",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "outreach"}
+
+
+def _run_negotiate_task(task_id, db_path, config_dir, job_url):
+    """Run negotiation intelligence in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.database import JobDB
+        from job_hunter.negotiate.intelligence import run_negotiation
+
+        db = JobDB(db_path)
+        llm, profile = _get_llm_and_profile(config_dir)
+        result = asyncio.run(run_negotiation(db, profile, llm, job_url))
+        db.close()
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {
+                "has_market_data": "market_data" in result,
+                "scripts_count": len(result.get("scripts", [])),
+                "error": result.get("error"),
+            },
+            "type": "negotiate",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "negotiate"}
+
+
+def _run_pipeline_task(task_id, db_path, config_dir, stages):
+    """Run pipeline stages sequentially in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.config import load_config
+
+        config = load_config(config_dir)
+        data_dir = config.data_dir
+
+        stage_results = []
+        valid_stages = {
+            "discover": "_run_discover",
+            "enrich": "_run_enrich",
+            "score": "_run_score",
+            "evaluate": "_run_evaluate",
+            "tailor": "_run_tailor",
+            "sync": "_run_sync",
+        }
+
+        from job_hunter.pipeline import (
+            _run_discover,
+            _run_enrich,
+            _run_evaluate,
+            _run_score,
+            _run_sync,
+            _run_tailor,
+        )
+
+        stage_funcs = {
+            "discover": lambda: _run_discover(config_dir, data_dir),
+            "enrich": lambda: _run_enrich(config_dir, data_dir),
+            "score": lambda: _run_score(config_dir, data_dir),
+            "evaluate": lambda: _run_evaluate(config_dir, data_dir),
+            "tailor": lambda: _run_tailor(config_dir, data_dir),
+            "sync": lambda: _run_sync(data_dir),
+        }
+
+        for stage_name in stages:
+            if stage_name not in valid_stages:
+                stage_results.append(
+                    {"stage": stage_name, "success": False, "detail": "unknown stage"}
+                )
+                continue
+            try:
+                result = stage_funcs[stage_name]()
+                stage_results.append(
+                    {
+                        "stage": result.name,
+                        "success": result.success,
+                        "detail": result.detail,
+                        "error": result.error,
+                    }
+                )
+            except Exception as e:
+                stage_results.append(
+                    {"stage": stage_name, "success": False, "detail": "", "error": str(e)}
+                )
+
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {"stages": stage_results},
+            "type": "pipeline",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "pipeline"}
+
+
+def _run_compare_task(task_id, db_path, config_dir, min_score, limit):
+    """Run job comparison in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.database import JobDB
+        from job_hunter.evaluate.compare import compare_jobs
+
+        db = JobDB(db_path)
+        llm, profile = _get_llm_and_profile(config_dir)
+
+        # Get evaluated jobs above min_score
+        jobs = db.get_evaluated_jobs(min_score=min_score)[:limit]
+        if not jobs:
+            db.close()
+            _tasks[task_id] = {
+                "status": "completed",
+                "result": {"jobs_compared": 0, "comparison": []},
+                "type": "compare",
+            }
+            return
+
+        results = asyncio.run(compare_jobs(jobs, profile, llm))
+        db.close()
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {"jobs_compared": len(results), "comparison": results},
+            "type": "compare",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "compare"}
 
 
 # ---------------------------------------------------------------------------
@@ -381,12 +620,14 @@ def create_app(
 
     Args:
         db_path: Path to the job-hunter SQLite database.
-        config_dir: Optional config directory (reserved for future use).
+        config_dir: Optional config directory for LLM/pipeline actions.
 
     Returns:
         Configured FastAPI application.
     """
     db_path = Path(db_path)
+    if config_dir is not None:
+        config_dir = Path(config_dir)
 
     app = FastAPI(
         title="job-hunter dashboard",
@@ -690,12 +931,83 @@ def create_app(
         return {"ok": True, "updated": updated}
 
     # -----------------------------------------------------------------------
+    # Pipeline action endpoints (background tasks)
+    # -----------------------------------------------------------------------
+
+    def _require_config_dir():
+        """Raise 400 if config_dir was not set."""
+        if config_dir is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Config directory not set. Start the dashboard with --config-dir.",
+            )
+        return config_dir
+
+    @app.post("/api/actions/evaluate")
+    async def api_action_evaluate(body: EvaluateRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "evaluate"}
+        _executor.submit(
+            _run_evaluate_task, task_id, db_path, cfg, body.job_url, body.min_score
+        )
+        return {"task_id": task_id, "message": "Evaluation started"}
+
+    @app.post("/api/actions/outreach")
+    async def api_action_outreach(body: OutreachRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "outreach"}
+        _executor.submit(_run_outreach_task, task_id, db_path, cfg, body.job_url)
+        return {"task_id": task_id, "message": "Outreach generation started"}
+
+    @app.post("/api/actions/negotiate")
+    async def api_action_negotiate(body: NegotiateRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "negotiate"}
+        _executor.submit(_run_negotiate_task, task_id, db_path, cfg, body.job_url)
+        return {"task_id": task_id, "message": "Negotiation intelligence started"}
+
+    @app.post("/api/actions/pipeline")
+    async def api_action_pipeline(body: PipelineRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "pipeline"}
+        _executor.submit(_run_pipeline_task, task_id, db_path, cfg, body.stages)
+        return {"task_id": task_id, "message": "Pipeline started"}
+
+    @app.post("/api/actions/compare")
+    async def api_action_compare(body: CompareRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "compare"}
+        _executor.submit(
+            _run_compare_task, task_id, db_path, cfg, body.min_score, body.limit
+        )
+        return {"task_id": task_id, "message": "Comparison started"}
+
+    @app.get("/api/actions/tasks")
+    async def api_action_tasks():
+        tasks_list = [
+            {"id": tid, **info} for tid, info in _tasks.items()
+        ]
+        return {"tasks": tasks_list}
+
+    @app.get("/api/actions/tasks/{task_id}")
+    async def api_action_task_status(task_id: str):
+        if task_id not in _tasks:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return {"id": task_id, **_tasks[task_id]}
+
+    # -----------------------------------------------------------------------
     # Shutdown hook
     # -----------------------------------------------------------------------
 
     @app.on_event("shutdown")
     async def shutdown():
         _db.close()
+        _executor.shutdown(wait=False)
 
     return app
 
@@ -719,6 +1031,12 @@ def main() -> None:
     parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    parser.add_argument(
+        "--config-dir",
+        type=str,
+        default=None,
+        help="Config directory for LLM/pipeline actions (default: auto-detect)",
+    )
     args = parser.parse_args()
 
     if args.db:
@@ -728,12 +1046,21 @@ def main() -> None:
 
         db_path = get_data_dir() / "jobs.db"
 
+    config_dir = Path(args.config_dir) if args.config_dir else None
+    if config_dir is None:
+        try:
+            from job_hunter.config import get_config_dir
+
+            config_dir = get_config_dir()
+        except Exception:
+            pass
+
     if not db_path.exists():
         print(f"Warning: Database not found at {db_path}. Starting with empty state.")
 
     import uvicorn
 
-    app = create_app(db_path=db_path)
+    app = create_app(db_path=db_path, config_dir=config_dir)
     uvicorn.run(app, host=args.host, port=args.port)
 
 
