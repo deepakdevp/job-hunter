@@ -23,12 +23,12 @@
 - Creative Technologist (AI) — generative AI + creative applications (in demand in Japan)
 - AI Innovation Lead — technical leadership for AI adoption
 
-### Top 5 for Deepak's profile
-1. AI Agent Engineer (direct fit)
+### Top 5 Emerging Roles (Example Profile)
+1. AI Agent Engineer (direct fit for agentic AI experience)
 2. Context Engineer (RAG expertise)
 3. AI Product Engineer (full-stack + LLM)
-4. MCP Server / AI Tooling Developer (rare MCP experience)
-5. Creative Technologist AI (CV + generative AI, Japan demand)
+4. MCP Server / AI Tooling Developer (MCP experience)
+5. Creative Technologist AI (generative AI + full-stack)
 
 ---
 

@@ -14,7 +14,7 @@ SAMPLE_LATEX = r"""
 \documentclass{article}
 \begin{document}
 \section{Experience}
-\textbf{Full Stack Developer} at Medikabazaar
+\textbf{Full Stack Developer} at Acme Corp
 \begin{itemize}
 \item Built REST APIs with Django
 \item Migrated frontend to React
@@ -27,7 +27,7 @@ Python, React, Django
 TAILORED_RESPONSE = r"""
 \begin{document}
 \section{Experience}
-\textbf{Full Stack Developer} at Medikabazaar
+\textbf{Full Stack Developer} at Acme Corp
 \begin{itemize}
 \item Built REST APIs with Django serving 10K+ daily requests
 \item Migrated frontend to React, improving performance by 40\%
@@ -41,11 +41,11 @@ PROFILE = {
     "target_roles": ["Software Engineer", "Full Stack Developer"],
     "skills": ["Python", "React", "Django"],
     "experience": [
-        {"company": "Medikabazaar", "title": "Full Stack Developer"},
-        {"company": "DrishteAI", "title": "AI Engineer"},
+        {"company": "Acme Corp", "title": "Full Stack Developer"},
+        {"company": "TechStartup Inc", "title": "AI Engineer"},
     ],
     "education": [
-        {"institution": "Bennett University"},
+        {"institution": "State University"},
     ],
 }
 
@@ -91,9 +91,9 @@ def test_clean_llm_response_plain():
 
 def test_extract_companies_from_profile():
     companies = _extract_companies_from_profile(PROFILE)
-    assert "Medikabazaar" in companies
-    assert "DrishteAI" in companies
-    assert "Bennett University" in companies
+    assert "Acme Corp" in companies
+    assert "TechStartup Inc" in companies
+    assert "State University" in companies
 
 
 def test_extract_companies_empty_profile():
@@ -114,7 +114,7 @@ async def test_tailor_resume_success():
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.STRICT)
     assert result is not None
     assert "\\begin{document}" in result
-    assert "Medikabazaar" in result
+    assert "Acme Corp" in result
     # 2 calls: keyword extraction + tailoring
     assert mock_llm.generate.call_count == 2
 
@@ -128,7 +128,7 @@ async def test_tailor_resume_retries_on_filler():
     # First call is keyword extraction (returns non-JSON so it gracefully fails),
     # second call returns filler, third call is clean
     filler_response = (
-        r"\begin{document}I am passionate about this role at Medikabazaar.\end{document}"
+        r"\begin{document}I am passionate about this role at Acme Corp.\end{document}"
     )
     mock_llm.generate.side_effect = [
         "not json",  # keyword extraction (gracefully fails)
@@ -165,7 +165,7 @@ async def test_tailor_resume_lenient_passes_filler():
     mock_llm = AsyncMock()
 
     # Filler response — passes in lenient mode
-    filler = r"\begin{document}I am passionate about working at Medikabazaar.\end{document}"
+    filler = r"\begin{document}I am passionate about working at Acme Corp.\end{document}"
     mock_llm.generate.return_value = filler
 
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.LENIENT)

@@ -8,11 +8,11 @@ from job_hunter.tailor.validator import (
 
 
 CLEAN_RESUME = """
-Full Stack Developer at Medikabazaar
+Full Stack Developer at Acme Corp
 - Built REST APIs serving 10K+ daily requests using Django and PostgreSQL
 - Migrated frontend to React, improving load time by 40%
 
-AI Engineer at DrishteAI
+AI Engineer at TechStartup Inc
 - Developed computer vision pipeline processing 500+ images/hour
 """
 
@@ -23,7 +23,7 @@ Leveraged cutting-edge technology to build synergy-driven platforms.
 
 LEAK_RESUME = """
 Here is the corrected resume as requested:
-Full Stack Developer at Medikabazaar
+Full Stack Developer at Acme Corp
 I hope this helps with your application.
 """
 
@@ -103,22 +103,22 @@ def test_check_llm_leaks_clean_text():
 
 
 def test_check_fabrication_no_issues():
-    text = "Full Stack Developer at Medikabazaar\nAI Engineer at DrishteAI"
-    issues = _check_fabrication(text, ["Medikabazaar", "DrishteAI"], [], [])
+    text = "Full Stack Developer at Acme Corp\nAI Engineer at TechStartup Inc"
+    issues = _check_fabrication(text, ["Acme Corp", "TechStartup Inc"], [], [])
     assert len(issues) == 0
 
 
 def test_check_fabrication_detects_fake_company():
-    text = "Senior Engineer at FakeCompanyInc, then at Medikabazaar"
-    issues = _check_fabrication(text, ["Medikabazaar", "DrishteAI"], [], [])
+    text = "Senior Engineer at FakeCompanyInc, then at Acme Corp"
+    issues = _check_fabrication(text, ["Acme Corp", "TechStartup Inc"], [], [])
     fabrication_issues = [i for i in issues if i.category == "fabrication"]
     assert len(fabrication_issues) >= 1
     assert "FakeCompanyInc" in fabrication_issues[0].match
 
 
 def test_check_fabrication_handles_partial_match():
-    text = "Developer at Medikabazaar Pvt Ltd"
-    issues = _check_fabrication(text, ["Medikabazaar"], [], [])
+    text = "Developer at Acme Corp Pvt Ltd"
+    issues = _check_fabrication(text, ["Acme Corp"], [], [])
     assert len(issues) == 0  # Partial match should be fine
 
 
@@ -129,7 +129,7 @@ def test_validate_with_fabrication():
     text = "Software Engineer at FakeStartup\nBuilt amazing things."
     result = validate_resume(
         text,
-        source_companies=["Medikabazaar", "DrishteAI"],
+        source_companies=["Acme Corp", "TechStartup Inc"],
         mode=ValidationMode.STRICT,
     )
     # Should flag fabrication

@@ -3,6 +3,8 @@
 config/.env
 config/profile.json
 config/*.db
+*.db-shm
+*.db-wal
 config/output/
 config/japan_output/
 config/sessions/

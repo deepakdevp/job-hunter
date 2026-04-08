@@ -184,7 +184,7 @@ def _check_fabrication(
     for company in found_companies:
         company_clean = company.strip()
         if company_clean and company_clean.lower() not in source_companies_lower:
-            # Check partial matches (e.g. "Medikabazaar" vs "Medikabazaar Pvt Ltd")
+            # Check partial matches (e.g. "Acme Corp" vs "Acme Corp Pvt Ltd")
             if not any(
                 company_clean.lower() in sc or sc in company_clean.lower()
                 for sc in source_companies_lower

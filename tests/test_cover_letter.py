@@ -15,14 +15,14 @@ from job_hunter.tailor.validator import ValidationMode
 
 
 PROFILE = {
-    "name": "Deepak Dev Panwar",
+    "name": "Jane Doe",
     "email": "deepak@example.com",
     "phone": "+81-123-4567",
     "target_roles": ["Software Engineer", "Full Stack Developer"],
     "skills": ["Python", "React", "Django", "AWS"],
     "experience": [
         {
-            "company": "Medikabazaar",
+            "company": "Acme Corp",
             "title": "Full Stack Developer",
             "highlights": [
                 "Built REST APIs serving 10K+ daily requests",
@@ -47,9 +47,9 @@ def _make_job(**kwargs) -> Job:
     return Job(**defaults)
 
 
-GOOD_COVER_LETTER = """Your platform team's Python and Django stack at TestCo caught my attention — it's essentially what I've been building with for the past two years at Medikabazaar, where I built REST APIs handling 10K+ daily requests.
+GOOD_COVER_LETTER = """Your platform team's Python and Django stack at TestCo caught my attention — it's essentially what I've been building with for the past two years at Acme Corp, where I built REST APIs handling 10K+ daily requests.
 
-What makes this role interesting is the focus on the platform layer. At Medikabazaar, I migrated a legacy jQuery frontend to React while keeping the Django backend stable under load. That experience of working across the full stack while shipping to production daily is something I'd bring to your team from day one.
+What makes this role interesting is the focus on the platform layer. At Acme Corp, I migrated a legacy jQuery frontend to React while keeping the Django backend stable under load. That experience of working across the full stack while shipping to production daily is something I'd bring to your team from day one.
 
 I'm based in Tokyo and ready to contribute. Happy to chat about how my experience maps to what you're building."""
 
@@ -110,7 +110,7 @@ def test_clean_response_strips_salutation():
 
 
 def test_clean_response_strips_closing():
-    text = "Great content.\n\nSincerely,\nDeepak"
+    text = "Great content.\n\nSincerely,\nJane"
     result = _clean_response(text)
     assert "Sincerely" not in result
     assert "Great content" in result

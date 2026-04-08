@@ -6,25 +6,25 @@ SAMPLE_LATEX = r"""
 \usepackage{fullpage}
 \begin{document}
 
-\textbf{Deepak Dev Panwar} \\
-Software Engineer | Tokyo, Japan
+\textbf{Jane Doe} \\
+Software Engineer | San Francisco, CA
 
 \section{Experience}
-\textbf{Full Stack Developer} at \textbf{Medikabazaar} \hfill 2023--2024
+\textbf{Full Stack Developer} at \textbf{Acme Corp} \hfill 2023--2024
 \begin{itemize}
 \item Built REST APIs serving 10K+ daily requests using Django and PostgreSQL
 \item Migrated legacy jQuery frontend to React, improving load time by 40\%
 \item Implemented CI/CD pipeline with GitHub Actions reducing deploy time by 60\%
 \end{itemize}
 
-\textbf{AI Engineer} at \textbf{DrishteAI} \hfill 2022--2023
+\textbf{AI Engineer} at \textbf{TechStartup Inc} \hfill 2022--2023
 \begin{itemize}
 \item Developed computer vision pipeline processing 500+ images/hour
 \item Built real-time dashboard with React and WebSocket
 \end{itemize}
 
 \section{Education}
-\textbf{B.Tech Computer Science} -- Bennett University \hfill 2019--2023
+\textbf{B.Tech Computer Science} -- State University \hfill 2019--2023
 
 \section{Skills}
 Python, JavaScript, TypeScript, React, Django, FastAPI, AWS, Docker, PostgreSQL
@@ -51,7 +51,7 @@ def test_parse_latex_resume_extracts_items():
     result = parse_latex_resume(SAMPLE_LATEX)
     exp = result.get_section("Experience")
     assert exp is not None
-    assert len(exp.items) >= 4  # 3 from Medikabazaar + 2 from DrishteAI
+    assert len(exp.items) >= 4  # 3 from Acme Corp + 2 from TechStartup Inc
 
 
 def test_parse_latex_resume_to_plain_text():
@@ -59,7 +59,7 @@ def test_parse_latex_resume_to_plain_text():
     plain = result.to_plain_text()
     assert "Experience" in plain
     assert "REST APIs" in plain
-    assert "Bennett University" in plain
+    assert "State University" in plain
 
 
 def test_parse_latex_resume_get_section():
