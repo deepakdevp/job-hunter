@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
 
@@ -30,6 +31,14 @@ _COVER_LETTER_PROMPT = """Write a cover letter for this job application. You are
 - Mention the company name at least once.
 - Mention at least one specific technology or skill from the JD.
 - End with a simple, confident closing — not "I look forward to the opportunity to discuss..."
+- Use the "I'm Choosing You" tone: confident without arrogance, proof-first, 2-4 sentences per paragraph.
+- Map specific JD quotes/requirements to candidate proof points — show evidence, not claims.
+- If evaluation data is provided below, use Block B match data for concrete proof points.
+- Include links to relevant case studies or portfolio if available in the profile.
+- Match the JD's language (English by default; if JD is in another language, write in that language).
+
+{evaluation_block}
+{portfolio_block}
 
 ## Candidate Profile
 - Name: {name}
@@ -128,13 +137,74 @@ def validate_cover_letter(
     )
 
 
+def _build_cover_letter_evaluation_block(job: Job, evaluation_data: dict | None = None) -> str:
+    """Format evaluation data for the cover letter prompt."""
+    eval_data = evaluation_data
+    if eval_data is None and job.evaluation:
+        try:
+            eval_data = json.loads(job.evaluation)
+        except (json.JSONDecodeError, TypeError):
+            return ""
+    if not eval_data:
+        return ""
+
+    parts = ["## Evaluation Match Data"]
+    for key in ("block_b", "cv_match", "match_data", "proof_points"):
+        if key in eval_data:
+            parts.append(f"### {key}")
+            val = eval_data[key]
+            if isinstance(val, dict):
+                parts.append(json.dumps(val, indent=2))
+            elif isinstance(val, list):
+                for item in val:
+                    parts.append(f"- {item}")
+            else:
+                parts.append(str(val))
+
+    # Block F STAR stories for behavioral proof
+    for key in ("block_f", "star_stories"):
+        if key in eval_data:
+            parts.append(f"### STAR Stories ({key})")
+            val = eval_data[key]
+            if isinstance(val, (dict, list)):
+                parts.append(json.dumps(val, indent=2))
+            else:
+                parts.append(str(val))
+
+    return "\n".join(parts) if len(parts) > 1 else ""
+
+
+def _build_portfolio_block(profile: dict) -> str:
+    """Include portfolio/case study URLs from the profile if available."""
+    urls = []
+    for key in ("portfolio_url", "portfolio", "case_studies", "github", "website"):
+        val = profile.get(key)
+        if val:
+            if isinstance(val, list):
+                urls.extend(val)
+            else:
+                urls.append(str(val))
+    if not urls:
+        return ""
+    lines = ["## Portfolio / Case Studies (include if relevant)"]
+    for url in urls:
+        lines.append(f"- {url}")
+    return "\n".join(lines)
+
+
 async def generate_cover_letter(
     job: Job,
     profile: dict,
     llm,
     mode: ValidationMode = ValidationMode.STRICT,
+    evaluation_data: dict | None = None,
 ) -> str | None:
     """Generate a humanized cover letter for a specific job.
+
+    Parameters
+    ----------
+    evaluation_data:
+        Optional pre-parsed evaluation dict. If *None*, falls back to ``job.evaluation``.
 
     Returns plain text cover letter body, or None if all retries fail.
     """
@@ -153,6 +223,9 @@ async def generate_cover_letter(
 
     desc = (job.description or "No description")[:3000]
 
+    evaluation_block = _build_cover_letter_evaluation_block(job, evaluation_data)
+    portfolio_block = _build_portfolio_block(profile)
+
     prompt = _COVER_LETTER_PROMPT.format(
         name=name,
         target_roles=target_roles,
@@ -163,6 +236,8 @@ async def generate_cover_letter(
         job_location=job.location,
         job_tech_stack=job.tech_stack or "Not specified",
         job_description=desc,
+        evaluation_block=evaluation_block,
+        portfolio_block=portfolio_block,
     )
 
     for attempt in range(MAX_RETRIES + 1):

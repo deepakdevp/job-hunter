@@ -115,7 +115,8 @@ async def test_tailor_resume_success():
     assert result is not None
     assert "\\begin{document}" in result
     assert "Medikabazaar" in result
-    mock_llm.generate.assert_called_once()
+    # 2 calls: keyword extraction + tailoring
+    assert mock_llm.generate.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -124,15 +125,21 @@ async def test_tailor_resume_retries_on_filler():
     resume = parse_latex_resume(SAMPLE_LATEX)
     mock_llm = AsyncMock()
 
-    # First call returns filler, second call is clean
+    # First call is keyword extraction (returns non-JSON so it gracefully fails),
+    # second call returns filler, third call is clean
     filler_response = (
         r"\begin{document}I am passionate about this role at Medikabazaar.\end{document}"
     )
-    mock_llm.generate.side_effect = [filler_response, TAILORED_RESPONSE]
+    mock_llm.generate.side_effect = [
+        "not json",  # keyword extraction (gracefully fails)
+        filler_response,
+        TAILORED_RESPONSE,
+    ]
 
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.STRICT)
     assert result is not None
-    assert mock_llm.generate.call_count == 2
+    # 3 calls: keyword extraction + first tailor attempt (filler) + retry
+    assert mock_llm.generate.call_count == 3
 
 
 @pytest.mark.asyncio
@@ -147,7 +154,8 @@ async def test_tailor_resume_returns_none_after_max_retries():
 
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.STRICT)
     assert result is None
-    assert mock_llm.generate.call_count == 3  # initial + 2 retries
+    # 4 calls: keyword extraction + initial + 2 retries
+    assert mock_llm.generate.call_count == 4
 
 
 @pytest.mark.asyncio
@@ -162,4 +170,5 @@ async def test_tailor_resume_lenient_passes_filler():
 
     result = await tailor_resume(job, resume, PROFILE, mock_llm, mode=ValidationMode.LENIENT)
     assert result is not None
-    mock_llm.generate.assert_called_once()
+    # 2 calls: keyword extraction + tailoring
+    assert mock_llm.generate.call_count == 2
