@@ -1006,10 +1006,21 @@ tr:last-child td { border-bottom: none; }
           <label><input type="checkbox" class="pipeline-stage-cb" value="evaluate" checked> Evaluate</label>
           <label><input type="checkbox" class="pipeline-stage-cb" value="tailor" checked> Tailor</label>
           <label><input type="checkbox" class="pipeline-stage-cb" value="sync" checked> Sync</label>
+          <label><input type="checkbox" class="pipeline-stage-cb" value="apply"> Apply (browser automation)</label>
         </div>
         <button class="btn btn-primary" onclick="runPipeline()" id="runPipelineBtn">
           <i data-lucide="play" style="width:12px;height:12px"></i> Run
         </button>
+        <hr style="border-color:#334155;margin:10px 0">
+        <h4>Quick Auto-Apply</h4>
+        <div style="display:flex;gap:6px;flex-direction:column">
+          <button class="btn" style="background:#22c55e;color:#fff;justify-content:center" onclick="triggerAutoApply(false)" id="btnAutoApplyLive">
+            <i data-lucide="send" style="width:12px;height:12px"></i> Apply All Eligible (LIVE)
+          </button>
+          <button class="btn" style="background:#334155;color:#94a3b8;justify-content:center" onclick="triggerAutoApply(true)" id="btnAutoApplyDry">
+            <i data-lucide="eye" style="width:12px;height:12px"></i> Dry Run (fill only)
+          </button>
+        </div>
       </div>
     </div>
     <div class="task-badge-wrap" id="taskBadgeWrap">
@@ -1786,6 +1797,11 @@ function renderJobDetail(data) {
       ${!evaluation ? `<button class="btn btn-evaluate" id="btnEvaluate" onclick="triggerEvaluate('${safeUrl}', this)"><i data-lucide="clipboard-check" style="width:12px;height:12px"></i> Evaluate</button>` : ''}
       ${evaluation ? `<button class="btn btn-outreach" id="btnOutreach" onclick="triggerOutreach('${safeUrl}', this)"><i data-lucide="mail" style="width:12px;height:12px"></i> Generate Outreach</button>` : ''}
       ${evaluation ? `<button class="btn btn-negotiate" id="btnNegotiate" onclick="triggerNegotiate('${safeUrl}', this)"><i data-lucide="handshake" style="width:12px;height:12px"></i> Negotiation Scripts</button>` : ''}
+      <div class="separator"></div>
+      ${['tailored','synced'].includes(j.status) ? `
+        <button class="btn" style="background:#22c55e;color:#fff" onclick="triggerApplyJob('${safeUrl}', false, this)"><i data-lucide="send" style="width:12px;height:12px"></i> Auto-Apply (LIVE)</button>
+        <button class="btn" style="background:#334155;color:#94a3b8" onclick="triggerApplyJob('${safeUrl}', true, this)"><i data-lucide="eye" style="width:12px;height:12px"></i> Dry Run</button>
+      ` : ''}
     </div>
 
     <div class="detail-header">
@@ -2483,6 +2499,26 @@ function triggerNegotiate(jobUrl, btnEl) {
   triggerAction('negotiate', {job_url: jobUrl}, () => {
     if (currentDetailUrl) loadJobDetail(currentDetailUrl);
   }, btnEl);
+}
+
+function triggerApplyJob(jobUrl, dryRun, btnEl) {
+  const mode = dryRun ? 'dry-run' : 'LIVE';
+  if (!dryRun && !confirm(`Are you sure you want to auto-apply to this job? This will open a browser and submit the application.`)) return;
+  triggerAction('apply', {job_url: jobUrl, dry_run: dryRun}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+    loadJobs();
+  }, btnEl);
+}
+
+function triggerAutoApply(dryRun) {
+  const mode = dryRun ? 'dry-run' : 'LIVE';
+  const btnId = dryRun ? 'btnAutoApplyDry' : 'btnAutoApplyLive';
+  const btn = document.getElementById(btnId);
+  if (!dryRun && !confirm(`Are you sure you want to auto-apply to ALL eligible jobs? This will open a browser and submit applications to every tailored/synced job.`)) return;
+  triggerAction('apply', {dry_run: dryRun}, () => {
+    loadJobs();
+    loadStats();
+  }, btn);
 }
 
 function runComparison() {

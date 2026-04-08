@@ -142,6 +142,12 @@ class CompareRequest(BaseModel):
     limit: int = 10
 
 
+class ApplyRequest(BaseModel):
+    job_url: str | None = None
+    dry_run: bool = False
+    limit: int | None = None
+
+
 # ---------------------------------------------------------------------------
 # LLM + config helper
 # ---------------------------------------------------------------------------
@@ -261,15 +267,11 @@ def _run_pipeline_task(task_id, db_path, config_dir, stages):
 
         stage_results = []
         valid_stages = {
-            "discover": "_run_discover",
-            "enrich": "_run_enrich",
-            "score": "_run_score",
-            "evaluate": "_run_evaluate",
-            "tailor": "_run_tailor",
-            "sync": "_run_sync",
+            "discover", "enrich", "score", "evaluate", "tailor", "sync", "apply",
         }
 
         from job_hunter.pipeline import (
+            _run_apply,
             _run_discover,
             _run_enrich,
             _run_evaluate,
@@ -285,6 +287,7 @@ def _run_pipeline_task(task_id, db_path, config_dir, stages):
             "evaluate": lambda: _run_evaluate(config_dir, data_dir),
             "tailor": lambda: _run_tailor(config_dir, data_dir),
             "sync": lambda: _run_sync(data_dir),
+            "apply": lambda: _run_apply(config_dir, data_dir, dry_run=False, confirm_submit=True),
         }
 
         for stage_name in stages:
@@ -347,6 +350,93 @@ def _run_compare_task(task_id, db_path, config_dir, min_score, limit):
         }
     except Exception as e:
         _tasks[task_id] = {"status": "failed", "error": str(e), "type": "compare"}
+
+
+def _run_apply_task(task_id, db_path, config_dir, job_url=None, dry_run=False, limit=None):
+    """Run auto-apply via Playwright in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        import time
+        from job_hunter.database import JobDB
+        from job_hunter.apply.applicant import Applicant
+
+        _, profile = _get_llm_and_profile(config_dir)
+        db = JobDB(db_path)
+
+        # Try to get LLM for field mapping (optional)
+        llm = None
+        try:
+            llm, _ = _get_llm_and_profile(config_dir)
+        except Exception:
+            pass
+
+        data_dir = Path(db_path).parent
+        applicant = Applicant(
+            profile=profile,
+            session_dir=data_dir / "sessions",
+            llm=llm,
+            log_path=data_dir / "output" / "apply_log.json",
+            dry_run=dry_run,
+            confirm_submit=not dry_run,
+        )
+
+        results = []
+
+        if job_url:
+            job = db.get_job(job_url)
+            if not job:
+                _tasks[task_id] = {
+                    "status": "failed",
+                    "error": f"Job not found: {job_url}",
+                    "type": "apply",
+                }
+                db.close()
+                return
+            jobs = [job]
+        else:
+            jobs = []
+            for s in ("tailored", "synced"):
+                jobs.extend(db.get_jobs_by_status(s))
+            jobs = [j for j in jobs if applicant.is_eligible(j)]
+            if limit:
+                jobs = jobs[:limit]
+
+        applied = 0
+        for i, job in enumerate(jobs):
+            result = asyncio.run(applicant.apply_to_job(job))
+            status_str = result.status
+            if status_str == "applied":
+                job.status = "applied"
+                db.upsert_job(job)
+                applied += 1
+            elif status_str == "dry_run":
+                pass
+            else:
+                job.status = "apply_failed"
+                db.upsert_job(job)
+            results.append({
+                "url": job.url,
+                "company": job.company,
+                "title": job.title,
+                "status": status_str,
+                "error": result.error,
+            })
+            if i < len(jobs) - 1:
+                time.sleep(2)
+
+        db.close()
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {
+                "total": len(jobs),
+                "applied": applied,
+                "dry_run": dry_run,
+                "results": results,
+            },
+            "type": "apply",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "apply"}
 
 
 # ---------------------------------------------------------------------------
@@ -986,6 +1076,24 @@ def create_app(
             _run_compare_task, task_id, db_path, cfg, body.min_score, body.limit
         )
         return {"task_id": task_id, "message": "Comparison started"}
+
+    @app.post("/api/actions/apply")
+    async def api_action_apply(body: ApplyRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        mode = "dry-run" if body.dry_run else "live"
+        _tasks[task_id] = {"status": "pending", "type": f"apply ({mode})"}
+        _executor.submit(
+            _run_apply_task,
+            task_id,
+            db_path,
+            cfg,
+            body.job_url,
+            body.dry_run,
+            body.limit,
+        )
+        msg = "Auto-apply started (dry-run)" if body.dry_run else "Auto-apply started (LIVE)"
+        return {"task_id": task_id, "message": msg}
 
     @app.get("/api/actions/tasks")
     async def api_action_tasks():
