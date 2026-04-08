@@ -1084,3 +1084,209 @@ async def run_deep_research_loop(
         logger.info(f"\nLoop interrupted after {iteration} iterations")
 
     return cumulative_results
+
+
+# ── Structured company research (6-axis) ──────────────────────────────────
+
+_STRUCTURED_RESEARCH_PROMPT = """You are an expert company researcher producing structured intelligence for a job candidate.
+
+## Job
+- Title: {title}
+- Company: {company}
+- Location: {location}
+- Description (truncated): {description}
+
+## Candidate Profile
+- Target roles: {target_roles}
+- Skills: {skills}
+- Years of experience: {yoe}
+- Experience highlights: {experience_highlights}
+
+## Evaluation Data (if available)
+{evaluation_data}
+
+## Instructions
+Produce a 6-axis structured research report. For each axis, provide findings and a confidence level (HIGH/MEDIUM/LOW). HIGH means you have strong knowledge, MEDIUM means reasonable inference, LOW means speculative.
+
+### Axis 1: AI/Tech Strategy
+What AI/ML products does {company} build? Engineering blog? Published papers or conference talks? Known tech stack?
+
+### Axis 2: Recent Moves (last 6 months)
+Hiring waves, acquisitions, product launches, funding rounds, leadership changes, layoffs, pivots.
+
+### Axis 3: Engineering Culture
+Deploy cadence (daily/weekly/monthly), mono-repo vs multi-repo, primary languages/frameworks, remote-first vs office-first, Glassdoor/Blind sentiment summary.
+
+### Axis 4: Probable Challenges
+Scaling issues, reliability/cost/latency problems, tech debt, migrations in progress, pain points from employee reviews.
+
+### Axis 5: Competitive Positioning
+Main competitors, moat/differentiation, market position, growth trajectory.
+
+### Axis 6: Candidate Angle
+What unique value does THIS specific candidate bring? Which resume projects are most relevant? What interview story should they lead with? What gaps should they proactively address?
+
+Return JSON:
+{{
+  "ai_tech_strategy": {{
+    "findings": "...",
+    "products": ["..."],
+    "tech_stack": ["..."],
+    "confidence": "HIGH/MEDIUM/LOW"
+  }},
+  "recent_moves": {{
+    "findings": "...",
+    "events": ["..."],
+    "confidence": "HIGH/MEDIUM/LOW"
+  }},
+  "engineering_culture": {{
+    "findings": "...",
+    "deploy_cadence": "...",
+    "repo_structure": "...",
+    "languages": ["..."],
+    "remote_policy": "...",
+    "sentiment": "...",
+    "confidence": "HIGH/MEDIUM/LOW"
+  }},
+  "probable_challenges": {{
+    "findings": "...",
+    "challenges": ["..."],
+    "confidence": "HIGH/MEDIUM/LOW"
+  }},
+  "competitive_positioning": {{
+    "findings": "...",
+    "competitors": ["..."],
+    "moat": "...",
+    "confidence": "HIGH/MEDIUM/LOW"
+  }},
+  "candidate_angle": {{
+    "findings": "...",
+    "unique_value": "...",
+    "relevant_projects": ["..."],
+    "lead_story": "...",
+    "gaps_to_address": ["..."],
+    "confidence": "HIGH/MEDIUM/LOW"
+  }}
+}}"""
+
+
+async def research_company_structured(job: Job, profile: dict, llm) -> dict:
+    """Produce 6-axis structured company research for a job.
+
+    Axes:
+    1. ai_tech_strategy - products, blog, papers, stack
+    2. recent_moves - hiring, acquisitions, launches, funding (last 6 months)
+    3. engineering_culture - deploy cadence, repo, languages, remote, sentiment
+    4. probable_challenges - scaling, reliability, migrations, pain points
+    5. competitive_positioning - competitors, moat, differentiation
+    6. candidate_angle - unique value, relevant projects, interview story
+
+    If the job has evaluation data, it is used for axis 6 (candidate_angle).
+    The result is stored in job.research_data.
+
+    Args:
+        job: Job to research.
+        profile: Candidate profile dict.
+        llm: LLM provider instance.
+
+    Returns:
+        Structured research dict with 6 axes.
+    """
+    # Build evaluation context for candidate_angle axis
+    evaluation_data = "No evaluation data available."
+    if job.evaluation:
+        try:
+            eval_dict = json.loads(job.evaluation)
+            # Extract relevant blocks for candidate angle
+            blocks = eval_dict.get("blocks", {})
+            eval_parts = []
+            cv_match = blocks.get("cv_match", {})
+            if cv_match and "error" not in cv_match:
+                eval_parts.append(f"CV Match: {json.dumps(cv_match)[:800]}")
+            personalization = blocks.get("personalization", {})
+            if personalization and "error" not in personalization:
+                eval_parts.append(f"Personalization: {json.dumps(personalization)[:800]}")
+            level_strategy = blocks.get("level_strategy", {})
+            if level_strategy and "error" not in level_strategy:
+                eval_parts.append(f"Level Strategy: {json.dumps(level_strategy)[:400]}")
+            if eval_parts:
+                evaluation_data = "\n".join(eval_parts)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Build experience highlights
+    experience_highlights = ""
+    if profile.get("experience"):
+        highlights = profile["experience"]
+        if isinstance(highlights, list):
+            highlights = "; ".join(
+                str(e.get("title", "") + " at " + str(e.get("company", "")))
+                if isinstance(e, dict)
+                else str(e)
+                for e in highlights[:5]
+            )
+        experience_highlights = str(highlights)[:500]
+
+    prompt = _STRUCTURED_RESEARCH_PROMPT.format(
+        title=job.title,
+        company=job.company,
+        location=job.location or "Not specified",
+        description=(job.description or "")[:2000],
+        target_roles=", ".join(profile.get("target_roles", []))[:200],
+        skills=", ".join(profile.get("skills", []))[:300],
+        yoe=profile.get("years_of_experience", "Not specified"),
+        experience_highlights=experience_highlights or "Not provided",
+        evaluation_data=evaluation_data[:2000],
+    )
+
+    try:
+        response = await llm.generate(prompt, json_mode=True, max_tokens=4096)
+        result = _repair_json(response)
+
+        # Validate axes exist with at least findings and confidence
+        required_axes = [
+            "ai_tech_strategy",
+            "recent_moves",
+            "engineering_culture",
+            "probable_challenges",
+            "competitive_positioning",
+            "candidate_angle",
+        ]
+        for axis in required_axes:
+            if axis not in result:
+                result[axis] = {
+                    "findings": "No data available",
+                    "confidence": "LOW",
+                }
+            elif not isinstance(result[axis], dict):
+                result[axis] = {
+                    "findings": str(result[axis]),
+                    "confidence": "LOW",
+                }
+            else:
+                result[axis].setdefault("findings", "No data available")
+                result[axis].setdefault("confidence", "LOW")
+
+        # Store in job.research_data
+        job.research_data = json.dumps(result)
+
+        logger.info(
+            f"Structured research complete for {job.title} at {job.company} "
+            f"({sum(1 for a in required_axes if result[a].get('confidence') == 'HIGH')}/6 HIGH confidence)"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Structured research failed for {job.url}: {e}")
+        error_result = {
+            axis: {"findings": "Research failed", "confidence": "LOW", "error": str(e)}
+            for axis in [
+                "ai_tech_strategy",
+                "recent_moves",
+                "engineering_culture",
+                "probable_challenges",
+                "competitive_positioning",
+                "candidate_angle",
+            ]
+        }
+        return error_result
