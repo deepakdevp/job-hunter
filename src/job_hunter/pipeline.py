@@ -153,7 +153,19 @@ def _run_tailor(config_dir: Path, data_dir: Path) -> StageResult:
             if pdf:
                 job.resume_path = str(pdf)
 
-            cl_text = asyncio.run(generate_cover_letter(job, profile, llm))
+            # Parse evaluation data so cover letter can use proof points
+            eval_data = None
+            if job.evaluation:
+                try:
+                    import json as _json
+
+                    eval_data = _json.loads(job.evaluation)
+                except Exception:
+                    pass
+
+            cl_text = asyncio.run(
+                generate_cover_letter(job, profile, llm, evaluation_data=eval_data)
+            )
             if cl_text:
                 _, cl_txt = render_cover_letter(
                     cl_text, profile, job.title, job.company, output_dir, job.url
@@ -187,7 +199,9 @@ def _run_sync(data_dir: Path) -> StageResult:
     return StageResult(name="Sync", detail=f"{created} created, {updated} updated")
 
 
-def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> StageResult:
+def _run_apply(
+    config_dir: Path, data_dir: Path, dry_run: bool = False, confirm_submit: bool = False
+) -> StageResult:
     """Run apply stage."""
     import json
     import time
@@ -219,6 +233,7 @@ def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> Stage
         llm=llm,
         log_path=data_dir / "output" / "apply_log.json",
         dry_run=dry_run,
+        confirm_submit=confirm_submit,
     )
 
     db = JobDB(data_dir / "jobs.db")
@@ -243,11 +258,13 @@ def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> Stage
 
 
 def _run_evaluate(config_dir: Path, data_dir: Path) -> StageResult:
-    """Run evaluate stage."""
+    """Run evaluate stage and extract stories to story bank."""
+    import json as _json
     from job_hunter.config import load_config
     from job_hunter.database import JobDB
     from job_hunter.llm.base import get_provider
     from job_hunter.evaluate.engine import run_evaluation
+    from job_hunter.stories.bank import extract_stories_from_evaluation, add_stories_to_bank
 
     config = load_config(config_dir, data_dir)
     db = JobDB(data_dir / "jobs.db")
@@ -256,9 +273,27 @@ def _run_evaluate(config_dir: Path, data_dir: Path) -> StageResult:
     profile = config.profile
 
     evaluated, total = asyncio.run(run_evaluation(db, profile, llm, min_score=5))
+
+    # Auto-extract STAR+R stories from newly evaluated jobs into story bank
+    stories_added = 0
+    for job in db.get_evaluated_jobs(min_score=5):
+        if job.evaluation:
+            try:
+                eval_data = _json.loads(job.evaluation)
+                new_stories = asyncio.run(
+                    extract_stories_from_evaluation(eval_data, job.url)
+                )
+                if new_stories:
+                    stories_added += add_stories_to_bank(data_dir / "jobs.db", new_stories)
+            except Exception:
+                pass
+
     db.close()
 
-    return StageResult(name="Evaluate", detail=f"{evaluated}/{total} evaluated")
+    detail = f"{evaluated}/{total} evaluated"
+    if stories_added:
+        detail += f", {stories_added} stories extracted"
+    return StageResult(name="Evaluate", detail=detail)
 
 
 def run_pipeline(
@@ -267,6 +302,7 @@ def run_pipeline(
     skip_evaluate: bool = False,
     run_apply: bool = False,
     dry_run: bool = False,
+    confirm_submit: bool = False,
     data_dir: Path | None = None,
 ) -> PipelineSummary:
     """Run the full job-hunting pipeline with best-effort error handling."""
@@ -287,7 +323,9 @@ def run_pipeline(
     stages.append(("Tailor", lambda: _run_tailor(config_dir, data_dir)))
     stages.append(("Sync", lambda: _run_sync(data_dir)))
     if run_apply:
-        stages.append(("Apply", lambda: _run_apply(config_dir, data_dir, dry_run)))
+        stages.append(
+            ("Apply", lambda: _run_apply(config_dir, data_dir, dry_run, confirm_submit))
+        )
 
     for name, stage_fn in stages:
         try:

@@ -401,8 +401,21 @@ def tailor(ctx, tailor_all, job_url, validation):
                 else:
                     console.print(f"  [yellow]Resume PDF render failed for {job.title}[/]")
 
+                # Parse evaluation data for richer cover letter
+                eval_data = None
+                if job.evaluation:
+                    try:
+                        import json as _j
+                        eval_data = _j.loads(job.evaluation)
+                    except Exception:
+                        pass
+
                 # Generate cover letter
-                cl_text = asyncio.run(generate_cover_letter(job, profile, llm, mode=mode))
+                cl_text = asyncio.run(
+                    generate_cover_letter(
+                        job, profile, llm, mode=mode, evaluation_data=eval_data
+                    )
+                )
                 if cl_text:
                     cl_pdf, cl_txt = render_cover_letter(
                         cl_text, profile, job.title, job.company, output_dir, job.url
@@ -1331,8 +1344,9 @@ def sync_pull(ctx):
     "--login", "login_domain", default=None, help="Open browser to save login session for a domain"
 )
 @click.option("--dry-run", is_flag=True, help="Fill forms without submitting")
+@click.option("--confirm", is_flag=True, help="Actually submit applications (required for real apply)")
 @click.pass_context
-def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
+def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run, confirm):
     """Apply to jobs using browser automation."""
     import json as _json
     import time
@@ -1371,6 +1385,7 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
         llm=llm,
         log_path=data_dir / "output" / "apply_log.json",
         dry_run=dry_run,
+        confirm_submit=confirm,
     )
 
     # Login mode
@@ -1464,8 +1479,9 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
 @click.option("--skip-discover", is_flag=True, help="Skip discover stage")
 @click.option("--skip-evaluate", is_flag=True, help="Skip evaluate stage")
 @click.option("--dry-run", is_flag=True, help="Dry-run apply (no submit)")
+@click.option("--confirm", is_flag=True, help="Actually submit applications (required for real apply)")
 @click.pass_context
-def run_cmd(ctx, run_apply, skip_discover, skip_evaluate, dry_run):
+def run_cmd(ctx, run_apply, skip_discover, skip_evaluate, dry_run, confirm):
     """Run the full pipeline: discover -> enrich -> score -> evaluate -> tailor -> sync."""
     from job_hunter.pipeline import run_pipeline
 
@@ -1480,6 +1496,7 @@ def run_cmd(ctx, run_apply, skip_discover, skip_evaluate, dry_run):
         skip_evaluate=skip_evaluate,
         run_apply=run_apply,
         dry_run=dry_run,
+        confirm_submit=confirm,
         data_dir=data_dir,
     )
 
