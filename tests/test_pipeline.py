@@ -40,50 +40,60 @@ def test_pipeline_summary_all_succeeded_false():
 @patch("job_hunter.pipeline._run_discover")
 @patch("job_hunter.pipeline._run_enrich")
 @patch("job_hunter.pipeline._run_score")
+@patch("job_hunter.pipeline._run_evaluate")
 @patch("job_hunter.pipeline._run_tailor")
 @patch("job_hunter.pipeline._run_sync")
-def test_run_pipeline_all_stages(mock_sync, mock_tailor, mock_score, mock_enrich, mock_discover):
+def test_run_pipeline_all_stages(
+    mock_sync, mock_tailor, mock_evaluate, mock_score, mock_enrich, mock_discover
+):
     mock_discover.return_value = StageResult(name="Discover", detail="5 jobs")
     mock_enrich.return_value = StageResult(name="Enrich", detail="5/5")
     mock_score.return_value = StageResult(name="Score", detail="3 scored")
+    mock_evaluate.return_value = StageResult(name="Evaluate", detail="3 evaluated")
     mock_tailor.return_value = StageResult(name="Tailor", detail="3/3")
     mock_sync.return_value = StageResult(name="Sync", detail="3 created")
 
     summary = run_pipeline(MagicMock(), skip_discover=False, run_apply=False)
-    assert len(summary.stages) == 5
+    assert len(summary.stages) == 6
 
 
 @patch("job_hunter.pipeline._run_discover")
 @patch("job_hunter.pipeline._run_enrich")
 @patch("job_hunter.pipeline._run_score")
+@patch("job_hunter.pipeline._run_evaluate")
 @patch("job_hunter.pipeline._run_tailor")
 @patch("job_hunter.pipeline._run_sync")
-def test_run_pipeline_skip_discover(mock_sync, mock_tailor, mock_score, mock_enrich, mock_discover):
+def test_run_pipeline_skip_discover(
+    mock_sync, mock_tailor, mock_evaluate, mock_score, mock_enrich, mock_discover
+):
     mock_enrich.return_value = StageResult(name="Enrich", detail="ok")
     mock_score.return_value = StageResult(name="Score", detail="ok")
+    mock_evaluate.return_value = StageResult(name="Evaluate", detail="ok")
     mock_tailor.return_value = StageResult(name="Tailor", detail="ok")
     mock_sync.return_value = StageResult(name="Sync", detail="ok")
 
     summary = run_pipeline(MagicMock(), skip_discover=True, run_apply=False)
     mock_discover.assert_not_called()
-    assert len(summary.stages) == 4
+    assert len(summary.stages) == 5
 
 
 @patch("job_hunter.pipeline._run_discover")
 @patch("job_hunter.pipeline._run_enrich")
 @patch("job_hunter.pipeline._run_score")
+@patch("job_hunter.pipeline._run_evaluate")
 @patch("job_hunter.pipeline._run_tailor")
 @patch("job_hunter.pipeline._run_sync")
 def test_run_pipeline_failure_continues(
-    mock_sync, mock_tailor, mock_score, mock_enrich, mock_discover
+    mock_sync, mock_tailor, mock_evaluate, mock_score, mock_enrich, mock_discover
 ):
     mock_discover.side_effect = Exception("network error")
     mock_enrich.return_value = StageResult(name="Enrich", detail="3/3")
     mock_score.return_value = StageResult(name="Score", detail="ok")
+    mock_evaluate.return_value = StageResult(name="Evaluate", detail="ok")
     mock_tailor.return_value = StageResult(name="Tailor", detail="ok")
     mock_sync.return_value = StageResult(name="Sync", detail="ok")
 
     summary = run_pipeline(MagicMock(), skip_discover=False, run_apply=False)
-    assert len(summary.stages) == 5
+    assert len(summary.stages) == 6
     assert summary.stages[0].success is False
     assert summary.stages[1].success is True

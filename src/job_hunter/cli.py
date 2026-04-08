@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.panel import Panel
 from rich.table import Table
 
 from job_hunter import __version__
@@ -98,7 +99,12 @@ def status(ctx):
     table.add_column("Stage", style="cyan")
     table.add_column("Count", justify="right")
     for status_name, count in stats.items():
-        table.add_row(status_name, str(count))
+        style = ""
+        if status_name == "evaluated":
+            style = "magenta"
+        elif status_name == "stories":
+            style = "blue"
+        table.add_row(status_name, f"[{style}]{count}[/]" if style else str(count))
     console.print(table)
 
 
@@ -465,6 +471,725 @@ def export_json_cmd(ctx, output, min_score):
     console.print(f"[green bold]Exported {count} jobs to {output}[/]")
 
 
+@cli.command()
+@click.option("--job-url", default=None, help="Evaluate a specific job by URL")
+@click.option("--all", "eval_all", is_flag=True, help="Evaluate all scored jobs above threshold")
+@click.option("--min-score", default=5, type=int, help="Minimum score for evaluation")
+@click.pass_context
+def evaluate(ctx, job_url, eval_all, min_score):
+    """Deep-evaluate scored jobs: comp intel, culture, interview prep."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.llm.base import get_provider
+
+    try:
+        from job_hunter.evaluate.engine import run_evaluation
+    except ImportError:
+        console.print("[red]Evaluation module not available.[/]")
+        raise SystemExit(1)
+
+    if not job_url and not eval_all:
+        console.print("[yellow]Use --job-url or --all to specify which jobs to evaluate.[/]")
+        return
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for evaluation but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+
+    console.print(f"[bold]Evaluating jobs (min_score={min_score})...[/]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        prog_task = None
+
+        def on_progress(done, total):
+            nonlocal prog_task
+            if prog_task is None:
+                prog_task = progress.add_task("Evaluating", total=total)
+            progress.update(prog_task, completed=done)
+
+        evaluated, total = asyncio.run(
+            run_evaluation(
+                db,
+                profile,
+                llm,
+                min_score=min_score,
+                job_url=job_url,
+                on_progress=on_progress,
+            )
+        )
+
+    db.close()
+    console.print(f"\n[green bold]Evaluated {evaluated}/{total} jobs[/]")
+
+
+@cli.group()
+def stories():
+    """Manage interview story bank."""
+    pass
+
+
+@stories.command("list")
+@click.pass_context
+def stories_list(ctx):
+    """List all stories grouped by theme."""
+    from job_hunter.database import StoryBankDB
+
+    data_dir = ctx.obj["data_dir"]
+    db_path = data_dir / "jobs.db"
+    if not db_path.exists():
+        console.print("[yellow]No database found. Run 'hunt discover' first.[/]")
+        return
+
+    sdb = StoryBankDB(db_path)
+    all_stories = sdb.get_stories()
+    sdb.close()
+
+    if not all_stories:
+        console.print("[yellow]No stories in the bank yet. Use 'hunt stories add' to create one.[/]")
+        return
+
+    # Group by theme
+    themes: dict[str, list[dict]] = {}
+    for s in all_stories:
+        theme = s.get("theme") or "Uncategorized"
+        themes.setdefault(theme, []).append(s)
+
+    for theme, group in sorted(themes.items()):
+        table = Table(title=f"Theme: {theme}", show_lines=True)
+        table.add_column("ID", style="dim", width=4)
+        table.add_column("Title", style="cyan", max_width=30)
+        table.add_column("Situation", max_width=40)
+        table.add_column("Result", max_width=40)
+        table.add_column("Best For", style="green", max_width=25)
+
+        for s in group:
+            table.add_row(
+                str(s.get("id", "")),
+                s.get("title", ""),
+                (s.get("situation") or "")[:80],
+                (s.get("result") or "")[:80],
+                s.get("best_for") or "",
+            )
+        console.print(table)
+        console.print()
+
+
+@stories.command("search")
+@click.argument("query")
+@click.pass_context
+def stories_search(ctx, query):
+    """Search stories by keyword."""
+    from job_hunter.database import StoryBankDB
+
+    data_dir = ctx.obj["data_dir"]
+    db_path = data_dir / "jobs.db"
+    if not db_path.exists():
+        console.print("[yellow]No database found.[/]")
+        return
+
+    sdb = StoryBankDB(db_path)
+    results = sdb.search_stories(query)
+    sdb.close()
+
+    if not results:
+        console.print(f"[yellow]No stories matching '{query}'.[/]")
+        return
+
+    table = Table(title=f"Stories matching: {query}", show_lines=True)
+    table.add_column("ID", style="dim", width=4)
+    table.add_column("Title", style="cyan", max_width=30)
+    table.add_column("Theme", style="magenta", max_width=15)
+    table.add_column("Situation", max_width=40)
+    table.add_column("Action", max_width=40)
+    table.add_column("Result", max_width=40)
+    table.add_column("Best For", style="green", max_width=25)
+
+    for s in results:
+        table.add_row(
+            str(s.get("id", "")),
+            s.get("title", ""),
+            s.get("theme") or "",
+            (s.get("situation") or "")[:80],
+            (s.get("action") or "")[:80],
+            (s.get("result") or "")[:80],
+            s.get("best_for") or "",
+        )
+
+    console.print(table)
+
+
+@stories.command("add")
+@click.option("--title", required=True, help="Story title")
+@click.option("--theme", required=True, help="Story theme (e.g., leadership, conflict)")
+@click.option("--situation", required=True, help="STAR: Situation")
+@click.option("--task", required=True, help="STAR: Task")
+@click.option("--action", required=True, help="STAR: Action")
+@click.option("--result", required=True, help="STAR: Result")
+@click.option("--reflection", default=None, help="STAR+R: Reflection / lesson learned")
+@click.option("--tags", default=None, help="Comma-separated tags")
+@click.option("--best-for", default=None, help="Best for which interview questions")
+@click.pass_context
+def stories_add(ctx, title, theme, situation, task, action, result, reflection, tags, best_for):
+    """Manually add a STAR+R story to the bank."""
+    from job_hunter.database import StoryBankDB
+
+    data_dir = ctx.obj["data_dir"]
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    sdb = StoryBankDB(data_dir / "jobs.db")
+
+    story = {
+        "title": title,
+        "theme": theme,
+        "situation": situation,
+        "task": task,
+        "action": action,
+        "result": result,
+        "reflection": reflection,
+        "tags": tags,
+        "best_for": best_for,
+    }
+    story_id = sdb.add_story(story)
+    sdb.close()
+
+    console.print(f"[green bold]Story added (id={story_id}): {title}[/]")
+
+
+@cli.command()
+@click.option("--job-url", required=True, help="Job URL to generate outreach for")
+@click.pass_context
+def outreach(ctx, job_url):
+    """Generate LinkedIn/email outreach messages for a job."""
+
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.llm.base import get_provider
+
+    try:
+        from job_hunter.outreach.generator import run_outreach
+    except ImportError:
+        console.print("[red]Outreach module not available.[/]")
+        raise SystemExit(1)
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    job = db.get_job(job_url)
+    if not job:
+        console.print(f"[red]Job not found: {job_url}[/]")
+        db.close()
+        return
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for outreach but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+
+    console.print(f"[bold]Generating outreach for {job.title} @ {job.company}...[/]")
+
+    result = asyncio.run(run_outreach(db, profile, llm, job_url))
+    db.close()
+
+    targets = result.get("targets", [])
+    if not targets:
+        console.print("[yellow]No outreach targets generated.[/]")
+        if result.get("error"):
+            console.print(f"[red]{result['error']}[/]")
+        return
+
+    for target in targets:
+        role = target.get("role", "Unknown Role")
+        for i, variant in enumerate(target.get("messages", []), 1):
+            channel = variant.get("channel", "linkedin")
+            body = variant.get("body", "")
+            char_count = len(body)
+            title = f"{role} — {channel} (variant {i}, {char_count} chars)"
+            console.print(Panel(body, title=title, border_style="cyan"))
+            console.print()
+
+    console.print(f"[green bold]Generated outreach for {len(targets)} target(s)[/]")
+
+
+@cli.command()
+@click.option("--min-score", default=5, type=int, help="Minimum score for comparison")
+@click.option("--limit", default=10, type=int, help="Max jobs to compare")
+@click.pass_context
+def compare(ctx, min_score, limit):
+    """Compare top jobs across 10 weighted dimensions."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.llm.base import get_provider
+
+    try:
+        from job_hunter.evaluate.compare import compare_jobs, DIMENSIONS
+    except ImportError:
+        console.print("[red]Evaluate module not available.[/]")
+        raise SystemExit(1)
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    jobs = db.get_jobs_for_comparison(min_score=min_score, limit=limit)
+    if not jobs:
+        console.print("[yellow]No evaluated jobs found for comparison.[/]")
+        db.close()
+        return
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for comparison but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+
+    console.print(f"[bold]Comparing {len(jobs)} jobs across {len(DIMENSIONS)} dimensions...[/]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        prog_task = progress.add_task("Comparing", total=len(jobs))
+
+        results = asyncio.run(compare_jobs(jobs, profile, llm))
+        progress.update(prog_task, completed=len(jobs))
+
+    db.close()
+
+    if not results:
+        console.print("[yellow]No comparison results generated.[/]")
+        return
+
+    # Short labels for dimensions
+    dim_labels = {
+        "north_star_alignment": "N.Star",
+        "cv_match": "CV",
+        "seniority_level": "Level",
+        "estimated_comp": "Comp",
+        "growth_trajectory": "Growth",
+        "remote_quality": "Remote",
+        "company_reputation": "Rep",
+        "tech_stack_modernity": "Tech",
+        "speed_to_offer": "Speed",
+        "cultural_signals": "Culture",
+    }
+
+    table = Table(title="Job Comparison Matrix", show_lines=True)
+    table.add_column("#", style="bold", width=3)
+    table.add_column("Company", style="cyan", max_width=20)
+    table.add_column("Title", max_width=25)
+    for dim_name in DIMENSIONS:
+        label = dim_labels.get(dim_name, dim_name[:6])
+        weight = DIMENSIONS[dim_name]["weight"]
+        table.add_column(f"{label}\n({weight:.0%})", justify="center", width=8)
+    table.add_column("Total", style="bold green", justify="right", width=7)
+
+    for r in results:
+        scores = r.get("scores", {})
+        row = [
+            str(r.get("rank", "")),
+            r.get("company", "")[:20],
+            r.get("title", "")[:25],
+        ]
+        for dim_name in DIMENSIONS:
+            s = scores.get(dim_name, 0)
+            color = "green" if s >= 4 else ("yellow" if s == 3 else "red")
+            row.append(f"[{color}]{s}[/]")
+        row.append(f"{r.get('weighted_total', 0):.2f}")
+        table.add_row(*row)
+
+    console.print(table)
+
+    # Print notes
+    notes_with_content = [
+        r for r in results if r.get("notes") and "Scoring failed" not in r.get("notes", "")
+    ]
+    if notes_with_content:
+        console.print("\n[bold]Notes:[/]")
+        for r in notes_with_content:
+            console.print(f"  [cyan]#{r['rank']} {r['company']}:[/] {r['notes']}")
+
+
+@cli.command("evaluate-project")
+@click.argument("idea")
+@click.pass_context
+def evaluate_project(ctx, idea):
+    """Score a side-project idea for job-search signal value."""
+    import json as _json
+
+    from job_hunter.config import load_config
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required but not available: {e}[/]")
+        return
+
+    profile = config.profile
+    profile_summary = _json.dumps(
+        {k: v for k, v in profile.items() if k in ("target_roles", "skills", "experience_years")},
+        indent=2,
+    )
+
+    prompt = f"""You are a career strategist. Evaluate this side-project idea for a job seeker.
+
+## Candidate Profile
+{profile_summary}
+
+## Project Idea
+{idea}
+
+Score on 6 dimensions (1-5 each):
+1. signal — How strongly does this project signal competence to hiring managers?
+2. uniqueness — How differentiated is this from typical portfolio projects?
+3. demo_ability — How easy is it to demo in an interview or share a link?
+4. metrics_potential — Can the candidate generate quantifiable results/metrics?
+5. time_to_mvp — How quickly can an MVP be built? (5 = under 1 week, 1 = over 2 months)
+6. star_story_potential — How well does building this lend itself to STAR interview stories?
+
+Then give a verdict: BUILD, SKIP, or PIVOT (with reason).
+If BUILD: provide 4 weekly milestones and an interview_pack (2-3 talking points).
+
+Respond in JSON:
+{{
+  "scores": {{"signal": N, "uniqueness": N, "demo_ability": N, "metrics_potential": N, "time_to_mvp": N, "star_story_potential": N}},
+  "verdict": "BUILD|SKIP|PIVOT",
+  "reason": "...",
+  "milestones": ["Week 1: ...", "Week 2: ...", "Week 3: ...", "Week 4: ..."],
+  "interview_pack": ["talking point 1", "talking point 2"]
+}}"""
+
+    console.print(f"[bold]Evaluating project idea: {idea}[/]\n")
+
+    try:
+        response = asyncio.run(llm.generate(prompt, json_mode=True, max_tokens=1024))
+        result = _json.loads(response)
+    except Exception as e:
+        console.print(f"[red]Evaluation failed: {e}[/]")
+        return
+
+    # Display scores
+    scores = result.get("scores", {})
+    dim_names = ["signal", "uniqueness", "demo_ability", "metrics_potential", "time_to_mvp", "star_story_potential"]
+
+    table = Table(title="Project Evaluation", show_lines=True)
+    table.add_column("Dimension", style="cyan")
+    table.add_column("Score", justify="center", width=7)
+
+    for dim in dim_names:
+        s = scores.get(dim, 0)
+        color = "green" if s >= 4 else ("yellow" if s == 3 else "red")
+        table.add_row(dim.replace("_", " ").title(), f"[{color}]{s}/5[/]")
+
+    console.print(table)
+
+    # Verdict
+    verdict = result.get("verdict", "UNKNOWN")
+    verdict_color = {"BUILD": "green", "SKIP": "red", "PIVOT": "yellow"}.get(verdict, "white")
+    console.print(f"\n[bold {verdict_color}]Verdict: {verdict}[/]")
+    console.print(f"[dim]{result.get('reason', '')}[/]")
+
+    # Milestones (if BUILD)
+    milestones = result.get("milestones", [])
+    if milestones:
+        console.print("\n[bold]Weekly Milestones:[/]")
+        for m in milestones:
+            console.print(f"  {m}")
+
+    # Interview pack
+    interview_pack = result.get("interview_pack", [])
+    if interview_pack:
+        console.print("\n[bold]Interview Talking Points:[/]")
+        for tp in interview_pack:
+            console.print(f"  - {tp}")
+
+
+@cli.command("evaluate-training")
+@click.argument("course")
+@click.pass_context
+def evaluate_training(ctx, course):
+    """Evaluate whether a course/certification is worth the time investment."""
+    import json as _json
+
+    from job_hunter.config import load_config
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required but not available: {e}[/]")
+        return
+
+    profile = config.profile
+    profile_summary = _json.dumps(
+        {k: v for k, v in profile.items() if k in ("target_roles", "skills", "experience_years")},
+        indent=2,
+    )
+
+    prompt = f"""You are a career strategist. Evaluate this course/certification for a job seeker.
+
+## Candidate Profile
+{profile_summary}
+
+## Course / Certification
+{course}
+
+Score on 6 dimensions (1-5 each):
+1. north_star — How well does this align with the candidate's long-term career goals?
+2. recruiter_signal — How much does this credential catch a recruiter's eye on a resume?
+3. time_investment — Is the time investment reasonable? (5 = quick win, 1 = massive time sink)
+4. opportunity_cost — What is the candidate giving up? (5 = low cost, 1 = high cost)
+5. risks — Are there risks like the cert becoming obsolete? (5 = low risk, 1 = high risk)
+6. portfolio_deliverable — Does the course produce a tangible portfolio piece? (5 = strong deliverable)
+
+Then give a verdict: DO, SKIP, or DO_WITH_TIMEBOX (with reason and suggested timebox if applicable).
+
+Respond in JSON:
+{{
+  "scores": {{"north_star": N, "recruiter_signal": N, "time_investment": N, "opportunity_cost": N, "risks": N, "portfolio_deliverable": N}},
+  "verdict": "DO|SKIP|DO_WITH_TIMEBOX",
+  "reason": "...",
+  "timebox": "e.g., 2 weeks max",
+  "alternatives": ["alternative 1", "alternative 2"]
+}}"""
+
+    console.print(f"[bold]Evaluating training: {course}[/]\n")
+
+    try:
+        response = asyncio.run(llm.generate(prompt, json_mode=True, max_tokens=1024))
+        result = _json.loads(response)
+    except Exception as e:
+        console.print(f"[red]Evaluation failed: {e}[/]")
+        return
+
+    # Display scores
+    scores = result.get("scores", {})
+    dim_names = ["north_star", "recruiter_signal", "time_investment", "opportunity_cost", "risks", "portfolio_deliverable"]
+
+    table = Table(title="Training Evaluation", show_lines=True)
+    table.add_column("Dimension", style="cyan")
+    table.add_column("Score", justify="center", width=7)
+
+    for dim in dim_names:
+        s = scores.get(dim, 0)
+        color = "green" if s >= 4 else ("yellow" if s == 3 else "red")
+        table.add_row(dim.replace("_", " ").title(), f"[{color}]{s}/5[/]")
+
+    console.print(table)
+
+    # Verdict
+    verdict = result.get("verdict", "UNKNOWN")
+    verdict_color = {"DO": "green", "SKIP": "red", "DO_WITH_TIMEBOX": "yellow"}.get(verdict, "white")
+    console.print(f"\n[bold {verdict_color}]Verdict: {verdict}[/]")
+    console.print(f"[dim]{result.get('reason', '')}[/]")
+
+    timebox = result.get("timebox")
+    if timebox and verdict == "DO_WITH_TIMEBOX":
+        console.print(f"[yellow]Suggested timebox: {timebox}[/]")
+
+    alternatives = result.get("alternatives", [])
+    if alternatives:
+        console.print("\n[bold]Alternatives to consider:[/]")
+        for alt in alternatives:
+            console.print(f"  - {alt}")
+
+
+@cli.command()
+@click.option("--job-url", required=True, help="Job URL to generate negotiation scripts for")
+@click.pass_context
+def negotiate(ctx, job_url):
+    """Generate word-for-word negotiation scripts using evaluation data."""
+    import json as _json
+
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.llm.base import get_provider
+
+    config = load_config(ctx.obj["config_dir"])
+    data_dir = ctx.obj["data_dir"]
+    db = JobDB(data_dir / "jobs.db")
+
+    job = db.get_job(job_url)
+    if not job:
+        console.print(f"[red]Job not found: {job_url}[/]")
+        db.close()
+        return
+
+    try:
+        llm = get_provider(
+            config.llm_provider,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+        )
+    except Exception as e:
+        console.print(f"[red]LLM required for negotiation but not available: {e}[/]")
+        db.close()
+        return
+
+    profile = config.profile
+    profile_summary = _json.dumps(
+        {k: v for k, v in profile.items() if k in ("target_roles", "skills", "experience_years", "target_salary")},
+        indent=2,
+    )
+
+    # Include evaluation data if available
+    eval_context = ""
+    if job.evaluation:
+        try:
+            eval_data = _json.loads(job.evaluation)
+            eval_context = f"\n## Evaluation Data\n{_json.dumps(eval_data, indent=2)[:2000]}"
+        except _json.JSONDecodeError:
+            pass
+
+    prompt = f"""You are a salary negotiation coach. Generate word-for-word negotiation scripts.
+
+## Candidate Profile
+{profile_summary}
+
+## Job Details
+- Title: {job.title}
+- Company: {job.company}
+- Location: {job.location or "Not specified"}
+- Salary Range: {job.salary_raw or "Not specified"}
+- Salary Min: {job.salary_min or "Unknown"}
+- Salary Max: {job.salary_max or "Unknown"}
+{eval_context}
+
+Generate negotiation scripts for these scenarios:
+1. initial_offer — Response when receiving the first offer
+2. counter_offer — Script for presenting your counter
+3. competing_offer — Leveraging a competing offer
+4. benefits_negotiation — Negotiating non-salary benefits (equity, PTO, signing bonus, remote)
+5. final_acceptance — Graceful acceptance script
+
+For each script provide the exact words to say/write.
+
+Also include:
+- market_data: estimated market range for this role+location
+- leverage_points: specific strengths to emphasize
+- walk_away_number: the minimum acceptable offer
+
+Respond in JSON:
+{{
+  "scripts": {{
+    "initial_offer": "exact words...",
+    "counter_offer": "exact words...",
+    "competing_offer": "exact words...",
+    "benefits_negotiation": "exact words...",
+    "final_acceptance": "exact words..."
+  }},
+  "market_data": {{"low": N, "mid": N, "high": N, "currency": "USD"}},
+  "leverage_points": ["point 1", "point 2"],
+  "walk_away_number": N,
+  "tips": ["tip 1", "tip 2"]
+}}"""
+
+    console.print(f"[bold]Generating negotiation scripts for {job.title} @ {job.company}...[/]")
+
+    try:
+        response = asyncio.run(llm.generate(prompt, json_mode=True, max_tokens=2048))
+        result = _json.loads(response)
+    except Exception as e:
+        console.print(f"[red]Negotiation script generation failed: {e}[/]")
+        db.close()
+        return
+
+    # Store in database
+    job.negotiation = _json.dumps(result)
+    db.upsert_job(job)
+    db.close()
+
+    # Display scripts
+    scripts = result.get("scripts", {})
+    for scenario, script in scripts.items():
+        title = scenario.replace("_", " ").title()
+        console.print(Panel(script, title=title, border_style="green"))
+        console.print()
+
+    # Market data
+    market = result.get("market_data", {})
+    if market:
+        currency = market.get("currency", "USD")
+        console.print("[bold]Market Data:[/]")
+        console.print(
+            f"  Low: {currency} {market.get('low', 'N/A'):,} | "
+            f"Mid: {currency} {market.get('mid', 'N/A'):,} | "
+            f"High: {currency} {market.get('high', 'N/A'):,}"
+        )
+
+    walk_away = result.get("walk_away_number")
+    if walk_away:
+        console.print(f"  [bold red]Walk-away number: {market.get('currency', 'USD')} {walk_away:,}[/]")
+
+    # Leverage points
+    leverage = result.get("leverage_points", [])
+    if leverage:
+        console.print("\n[bold]Leverage Points:[/]")
+        for lp in leverage:
+            console.print(f"  - {lp}")
+
+    # Tips
+    tips = result.get("tips", [])
+    if tips:
+        console.print("\n[bold]Tips:[/]")
+        for tip in tips:
+            console.print(f"  - {tip}")
+
+    console.print(f"\n[green bold]Negotiation scripts saved for {job.company}[/]")
+
+
 @cli.group()
 def sync():
     """Notion sync commands."""
@@ -737,10 +1462,11 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run):
 @cli.command("run")
 @click.option("--apply", "run_apply", is_flag=True, help="Include auto-apply stage")
 @click.option("--skip-discover", is_flag=True, help="Skip discover stage")
+@click.option("--skip-evaluate", is_flag=True, help="Skip evaluate stage")
 @click.option("--dry-run", is_flag=True, help="Dry-run apply (no submit)")
 @click.pass_context
-def run_cmd(ctx, run_apply, skip_discover, dry_run):
-    """Run the full pipeline: discover -> enrich -> score -> tailor -> sync."""
+def run_cmd(ctx, run_apply, skip_discover, skip_evaluate, dry_run):
+    """Run the full pipeline: discover -> enrich -> score -> evaluate -> tailor -> sync."""
     from job_hunter.pipeline import run_pipeline
 
     config_dir = ctx.obj["config_dir"]
@@ -751,6 +1477,7 @@ def run_cmd(ctx, run_apply, skip_discover, dry_run):
     summary = run_pipeline(
         config_dir,
         skip_discover=skip_discover,
+        skip_evaluate=skip_evaluate,
         run_apply=run_apply,
         dry_run=dry_run,
         data_dir=data_dir,

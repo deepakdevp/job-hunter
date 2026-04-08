@@ -242,9 +242,29 @@ def _run_apply(config_dir: Path, data_dir: Path, dry_run: bool = False) -> Stage
     return StageResult(name="Apply", detail=f"{applied}/{len(jobs)} applied")
 
 
+def _run_evaluate(config_dir: Path, data_dir: Path) -> StageResult:
+    """Run evaluate stage."""
+    from job_hunter.config import load_config
+    from job_hunter.database import JobDB
+    from job_hunter.llm.base import get_provider
+    from job_hunter.evaluate.engine import run_evaluation
+
+    config = load_config(config_dir, data_dir)
+    db = JobDB(data_dir / "jobs.db")
+
+    llm = get_provider(config.llm_provider, api_key=config.llm_api_key, model=config.llm_model)
+    profile = config.profile
+
+    evaluated, total = asyncio.run(run_evaluation(db, profile, llm, min_score=5))
+    db.close()
+
+    return StageResult(name="Evaluate", detail=f"{evaluated}/{total} evaluated")
+
+
 def run_pipeline(
     config_dir: Path,
     skip_discover: bool = False,
+    skip_evaluate: bool = False,
     run_apply: bool = False,
     dry_run: bool = False,
     data_dir: Path | None = None,
@@ -262,6 +282,8 @@ def run_pipeline(
         stages.append(("Discover", lambda: _run_discover(config_dir, data_dir)))
     stages.append(("Enrich", lambda: _run_enrich(config_dir, data_dir)))
     stages.append(("Score", lambda: _run_score(config_dir, data_dir)))
+    if not skip_evaluate:
+        stages.append(("Evaluate", lambda: _run_evaluate(config_dir, data_dir)))
     stages.append(("Tailor", lambda: _run_tailor(config_dir, data_dir)))
     stages.append(("Sync", lambda: _run_sync(data_dir)))
     if run_apply:
