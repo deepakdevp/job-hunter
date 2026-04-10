@@ -148,6 +148,10 @@ class ApplyRequest(BaseModel):
     limit: int | None = None
 
 
+class ResearchRequest(BaseModel):
+    job_url: str
+
+
 # ---------------------------------------------------------------------------
 # LLM + config helper
 # ---------------------------------------------------------------------------
@@ -350,6 +354,44 @@ def _run_compare_task(task_id, db_path, config_dir, min_score, limit):
         }
     except Exception as e:
         _tasks[task_id] = {"status": "failed", "error": str(e), "type": "compare"}
+
+
+def _run_research_task(task_id, db_path, config_dir, job_url):
+    """Run structured 6-axis company research in a background thread."""
+    try:
+        _tasks[task_id]["status"] = "running"
+        from job_hunter.database import JobDB
+        from job_hunter.autoresearch.deep_research import research_company_structured
+
+        db = JobDB(db_path)
+        job = db.get_job(job_url)
+        if not job:
+            _tasks[task_id] = {
+                "status": "failed",
+                "error": f"Job not found: {job_url}",
+                "type": "research",
+            }
+            db.close()
+            return
+
+        llm, profile = _get_llm_and_profile(config_dir)
+        result = asyncio.run(research_company_structured(job, profile, llm))
+
+        # Store in DB
+        import json as _j
+
+        job.research_data = _j.dumps(result)
+        db.upsert_job(job)
+        db.close()
+
+        axes = [k for k in result if isinstance(result.get(k), dict)]
+        _tasks[task_id] = {
+            "status": "completed",
+            "result": {"axes_researched": len(axes), "company": job.company},
+            "type": "research",
+        }
+    except Exception as e:
+        _tasks[task_id] = {"status": "failed", "error": str(e), "type": "research"}
 
 
 def _run_apply_task(task_id, db_path, config_dir, job_url=None, dry_run=False, limit=None):
@@ -1094,6 +1136,14 @@ def create_app(
         )
         msg = "Auto-apply started (dry-run)" if body.dry_run else "Auto-apply started (LIVE)"
         return {"task_id": task_id, "message": msg}
+
+    @app.post("/api/actions/research")
+    async def api_action_research(body: ResearchRequest):
+        cfg = _require_config_dir()
+        task_id = str(uuid.uuid4())
+        _tasks[task_id] = {"status": "pending", "type": "research"}
+        _executor.submit(_run_research_task, task_id, db_path, cfg, body.job_url)
+        return {"task_id": task_id, "message": "Deep research started"}
 
     @app.get("/api/actions/tasks")
     async def api_action_tasks():

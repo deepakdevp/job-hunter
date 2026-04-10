@@ -1337,15 +1337,11 @@ async function discardJob(url) {
 }
 
 async function applyJob(url) {
-  try {
-    const resp = await fetch('/api/jobs/' + encodeJobUrl(url) + '/apply', { method: 'POST' });
-    if (!resp.ok) throw new Error(await resp.text());
-    const data = await resp.json();
-    showToast(data.message || 'Queued for apply');
-    refreshAfterAction();
-  } catch (err) {
-    showToast('Failed to queue apply: ' + err.message, true);
-  }
+  if (!confirm('This will open a browser and auto-apply to this job. Continue?')) return;
+  triggerAction('apply', {job_url: url, dry_run: false}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+    loadJobs();
+  });
 }
 
 async function addJobNote(url, note) {
@@ -1420,7 +1416,8 @@ function updateBatchBar() {
   bar.innerHTML = `
     <span class="batch-count">${selectedJobs.size} job${selectedJobs.size > 1 ? 's' : ''} selected</span>
     <button class="btn btn-discard" onclick="batchUpdateStatus('discarded')">Discard Selected</button>
-    <button class="btn btn-apply" onclick="batchUpdateStatus('applied')">Mark Applied</button>
+    <button class="btn" style="background:#166534;color:#fff;font-size:12px" onclick="batchUpdateStatus('applied')">Mark Applied</button>
+    <button class="btn btn-apply" onclick="batchAutoApply()">Auto-Apply Selected</button>
     <button class="btn btn-interview" onclick="batchUpdateStatus('interviewing')">Mark Interviewing</button>
     <select class="status-select-sm" id="batchStatusSelect" style="padding:6px 10px;font-size:12px">
       ${statusOptions('')}
@@ -1689,7 +1686,7 @@ function renderJobsTable(jobs) {
       <td>${posted}</td>
       <td class="action-btns" onclick="event.stopPropagation()" style="min-width:220px">
         <button class="btn btn-sm" onclick="openJobDetail('${safeUrl}')">View</button>
-        ${canApply ? `<button class="btn btn-sm btn-apply" onclick="applyJob('${safeUrl}')">Apply</button>` : ''}
+        ${canApply ? `<button class="btn btn-sm btn-apply" onclick="applyJob('${safeUrl}')">Auto-Apply</button>` : ''}
         <button class="btn btn-sm btn-discard" onclick="discardJob('${safeUrl}')">Discard</button>
         <select class="status-select-sm" onchange="updateJobStatus('${safeUrl}', this.value)">
           ${statusOptions(j.status || 'new')}
@@ -1784,7 +1781,8 @@ function renderJobDetail(data) {
       <select onchange="updateJobStatus('${safeUrl}', this.value)" style="font-weight:600">
         ${statusOptions(j.status || 'new')}
       </select>
-      ${canApply ? `<button class="btn btn-apply" onclick="applyJob('${safeUrl}')"><i data-lucide="send" style="width:12px;height:12px"></i> Mark Applied</button>` : `<button class="btn btn-apply" onclick="updateJobStatus('${safeUrl}','applied')"><i data-lucide="send" style="width:12px;height:12px"></i> Mark Applied</button>`}
+      ${canApply ? `<button class="btn btn-apply" onclick="applyJob('${safeUrl}')"><i data-lucide="send" style="width:12px;height:12px"></i> Auto-Apply</button>` : ''}
+      <button class="btn" style="background:#166534;color:#fff" onclick="updateJobStatus('${safeUrl}','applied')"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Mark Applied</button>
       <button class="btn btn-outline-red" onclick="discardJob('${safeUrl}')"><i data-lucide="trash-2" style="width:12px;height:12px"></i> Discard</button>
       <button class="btn btn-interview" onclick="updateJobStatus('${safeUrl}','interviewing')"><i data-lucide="message-circle" style="width:12px;height:12px"></i> Mark Interviewing</button>
       <button class="btn btn-offered" onclick="updateJobStatus('${safeUrl}','offered')"><i data-lucide="award" style="width:12px;height:12px"></i> Mark Offered</button>
@@ -1797,6 +1795,7 @@ function renderJobDetail(data) {
       ${!evaluation ? `<button class="btn btn-evaluate" id="btnEvaluate" onclick="triggerEvaluate('${safeUrl}', this)"><i data-lucide="clipboard-check" style="width:12px;height:12px"></i> Evaluate</button>` : ''}
       ${evaluation ? `<button class="btn btn-outreach" id="btnOutreach" onclick="triggerOutreach('${safeUrl}', this)"><i data-lucide="mail" style="width:12px;height:12px"></i> Generate Outreach</button>` : ''}
       ${evaluation ? `<button class="btn btn-negotiate" id="btnNegotiate" onclick="triggerNegotiate('${safeUrl}', this)"><i data-lucide="handshake" style="width:12px;height:12px"></i> Negotiation Scripts</button>` : ''}
+      ${!research ? `<button class="btn" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="triggerResearch('${safeUrl}', this)"><i data-lucide="globe" style="width:12px;height:12px"></i> Deep Research</button>` : ''}
       <div class="separator"></div>
       ${['tailored','synced'].includes(j.status) ? `
         <button class="btn" style="background:#22c55e;color:#fff" onclick="triggerApplyJob('${safeUrl}', false, this)"><i data-lucide="send" style="width:12px;height:12px"></i> Auto-Apply (LIVE)</button>
@@ -2501,6 +2500,12 @@ function triggerNegotiate(jobUrl, btnEl) {
   }, btnEl);
 }
 
+function triggerResearch(jobUrl, btnEl) {
+  triggerAction('research', {job_url: jobUrl}, () => {
+    if (currentDetailUrl) loadJobDetail(currentDetailUrl);
+  }, btnEl);
+}
+
 function triggerApplyJob(jobUrl, dryRun, btnEl) {
   const mode = dryRun ? 'dry-run' : 'LIVE';
   if (!dryRun && !confirm(`Are you sure you want to auto-apply to this job? This will open a browser and submit the application.`)) return;
@@ -2519,6 +2524,22 @@ function triggerAutoApply(dryRun) {
     loadJobs();
     loadStats();
   }, btn);
+}
+
+function batchAutoApply() {
+  const urls = Array.from(selectedJobs);
+  if (urls.length === 0) return;
+  if (!confirm(`Auto-apply to ${urls.length} selected job(s)? This will open a browser and submit applications.`)) return;
+  // Apply one by one via background tasks
+  urls.forEach(url => {
+    triggerAction('apply', {job_url: url, dry_run: false}, () => {
+      loadJobs();
+      loadStats();
+    });
+  });
+  selectedJobs.clear();
+  document.querySelectorAll('.row-checkbox').forEach(c => c.checked = false);
+  updateBatchBar();
 }
 
 function runComparison() {
