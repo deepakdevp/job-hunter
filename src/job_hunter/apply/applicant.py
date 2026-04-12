@@ -96,6 +96,7 @@ class Applicant:
         log_path: Path | str | None = None,
         dry_run: bool = False,
         confirm_submit: bool = False,
+        fallback_resume: Path | str | None = None,
     ) -> None:
         self.profile = profile
         self.session_mgr = SessionManager(Path(session_dir))
@@ -103,6 +104,7 @@ class Applicant:
         self.log_path = Path(log_path) if log_path else None
         self.dry_run = dry_run
         self.confirm_submit = confirm_submit
+        self.fallback_resume = Path(fallback_resume) if fallback_resume else None
 
     def _select_strategy(self, url: str) -> BaseFormFiller:
         """Return the appropriate form-filler strategy for *url*."""
@@ -113,15 +115,32 @@ class Applicant:
     def is_eligible(self, job: Job) -> bool:
         """Return *True* if *job* is ready for application.
 
-        A resume is required. Cover letter is recommended but optional —
-        many ATS platforms (Workday, Greenhouse, Lever) don't require one.
+        A resume is required — either a tailored one on the job or a
+        ``fallback_resume`` configured on the Applicant. Cover letter is
+        recommended but optional.
         """
         if job.status not in ELIGIBLE_STATUSES:
             return False
-        if not job.resume_path:
+        if not job.resume_path and not self.fallback_resume:
             return False
-        # Cover letter is optional — don't block apply if missing
         return True
+
+    def _resolve_resume(self, job: Job) -> str | None:
+        """Return the resume path to use for *job*.
+
+        Uses the job's tailored resume if available, otherwise falls back
+        to the master resume configured on the Applicant.
+        """
+        if job.resume_path and Path(job.resume_path).is_file():
+            return job.resume_path
+        if self.fallback_resume and self.fallback_resume.is_file():
+            log.info(
+                "No tailored resume for %s — using fallback: %s",
+                job.url,
+                self.fallback_resume,
+            )
+            return str(self.fallback_resume)
+        return None
 
     def _parse_evaluation_data(self, job: Job) -> dict | None:
         """Parse evaluation JSON from a job, returning *None* on failure."""
@@ -207,6 +226,12 @@ class Applicant:
                     )
                     self._log_result(result)
                     return result
+
+                # Resolve resume — use tailored if available, else fallback
+                resolved_resume = self._resolve_resume(job)
+                if resolved_resume and resolved_resume != job.resume_path:
+                    # Temporarily set the fallback so strategies can access it
+                    job.resume_path = resolved_resume
 
                 # Upload files.
                 await strategy.upload_files(page, job)

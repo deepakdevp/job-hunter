@@ -227,6 +227,17 @@ def _run_apply(
         except Exception:
             pass
 
+    # Auto-detect fallback master resume
+    fallback_resume = None
+    for candidate in [
+        config_dir / "japan_output" / "deepak_dev_panwar_resume.pdf",
+        config_dir / "master_resume.pdf",
+        config_dir / "resume.pdf",
+    ]:
+        if candidate.exists():
+            fallback_resume = str(candidate)
+            break
+
     applicant = Applicant(
         profile=profile,
         session_dir=data_dir / "sessions",
@@ -234,6 +245,7 @@ def _run_apply(
         log_path=data_dir / "output" / "apply_log.json",
         dry_run=dry_run,
         confirm_submit=confirm_submit,
+        fallback_resume=fallback_resume,
     )
 
     db = JobDB(data_dir / "jobs.db")

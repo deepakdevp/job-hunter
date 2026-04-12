@@ -1384,8 +1384,10 @@ def sync_pull(ctx):
 )
 @click.option("--dry-run", is_flag=True, help="Fill forms without submitting")
 @click.option("--confirm", is_flag=True, help="Actually submit applications (required for real apply)")
+@click.option("--fallback-resume", type=click.Path(exists=True), default=None,
+              help="Master resume PDF to use when no tailored resume exists")
 @click.pass_context
-def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run, confirm):
+def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run, confirm, fallback_resume):
     """Apply to jobs using browser automation."""
     import json as _json
     import time
@@ -1418,6 +1420,17 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run, confirm):
 
     data_dir = ctx.obj["data_dir"]
 
+    # Auto-detect fallback resume if not specified
+    if not fallback_resume:
+        for candidate in [
+            config_dir / "japan_output" / "deepak_dev_panwar_resume.pdf",
+            config_dir / "master_resume.pdf",
+            config_dir / "resume.pdf",
+        ]:
+            if candidate.exists():
+                fallback_resume = str(candidate)
+                break
+
     applicant = Applicant(
         profile=profile,
         session_dir=data_dir / "sessions",
@@ -1425,6 +1438,7 @@ def apply_cmd(ctx, job_url, apply_all, limit, login_domain, dry_run, confirm):
         log_path=data_dir / "output" / "apply_log.json",
         dry_run=dry_run,
         confirm_submit=confirm,
+        fallback_resume=fallback_resume,
     )
 
     # Login mode

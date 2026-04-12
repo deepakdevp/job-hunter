@@ -413,6 +413,18 @@ def _run_apply_task(task_id, db_path, config_dir, job_url=None, dry_run=False, l
             pass
 
         data_dir = Path(db_path).parent
+
+        # Auto-detect fallback master resume
+        fallback_resume = None
+        for candidate in [
+            config_dir / "japan_output" / "deepak_dev_panwar_resume.pdf",
+            config_dir / "master_resume.pdf",
+            config_dir / "resume.pdf",
+        ]:
+            if candidate.exists():
+                fallback_resume = str(candidate)
+                break
+
         applicant = Applicant(
             profile=profile,
             session_dir=data_dir / "sessions",
@@ -420,6 +432,7 @@ def _run_apply_task(task_id, db_path, config_dir, job_url=None, dry_run=False, l
             log_path=data_dir / "output" / "apply_log.json",
             dry_run=dry_run,
             confirm_submit=not dry_run,
+            fallback_resume=fallback_resume,
         )
 
         results = []
