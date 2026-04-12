@@ -111,13 +111,16 @@ class Applicant:
         return cls()
 
     def is_eligible(self, job: Job) -> bool:
-        """Return *True* if *job* is ready for application."""
+        """Return *True* if *job* is ready for application.
+
+        A resume is required. Cover letter is recommended but optional —
+        many ATS platforms (Workday, Greenhouse, Lever) don't require one.
+        """
         if job.status not in ELIGIBLE_STATUSES:
             return False
         if not job.resume_path:
             return False
-        if not job.cover_letter_path:
-            return False
+        # Cover letter is optional — don't block apply if missing
         return True
 
     def _parse_evaluation_data(self, job: Job) -> dict | None:

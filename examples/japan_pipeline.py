@@ -226,12 +226,14 @@ def stage_score():
     return scored, filtered
 
 
-# ── Stage 4: Tailor (resume only, no cover letter) ─────────────────────────
+# ── Stage 4: Tailor (resume + cover letter) ────────────────────────────────
 def stage_tailor(score_threshold: int = 7):
     from job_hunter.database import JobDB
     from job_hunter.tailor.parser import parse_latex_resume
     from job_hunter.tailor.tailor import tailor_resume as do_tailor
     from job_hunter.tailor.renderer import render_latex_to_pdf
+    from job_hunter.tailor.cover_letter import generate_cover_letter
+    from job_hunter.tailor.cover_letter_renderer import render_cover_letter
     from job_hunter.tailor.validator import ValidationMode
 
     db = JobDB(JAPAN_DB_PATH)
@@ -254,7 +256,7 @@ def stage_tailor(score_threshold: int = 7):
         db.close()
         return 0
 
-    console.print(f"\n[bold cyan]━━━ Stage 4: Tailoring {len(jobs)} resumes (score >= {score_threshold}) ━━━[/]")
+    console.print(f"\n[bold cyan]━━━ Stage 4: Tailoring {len(jobs)} resumes + cover letters (score >= {score_threshold}) ━━━[/]")
 
     success = 0
     with Progress(
@@ -276,11 +278,36 @@ def stage_tailor(score_threshold: int = 7):
                     )
                     if pdf_path:
                         job.resume_path = str(pdf_path)
-                        job.status = "tailored"
-                        db.upsert_job(job)
-                        success += 1
                     else:
                         console.print(f"  [yellow]PDF render failed: {job.title[:50]}[/]")
+
+                    # Generate cover letter
+                    eval_data = None
+                    if job.evaluation:
+                        try:
+                            import json as _j
+                            eval_data = _j.loads(job.evaluation)
+                        except Exception:
+                            pass
+
+                    cl_text = asyncio.run(
+                        generate_cover_letter(
+                            job, profile, llm, mode=ValidationMode.NORMAL,
+                            evaluation_data=eval_data,
+                        )
+                    )
+                    if cl_text:
+                        _, cl_txt = render_cover_letter(
+                            cl_text, profile, job.title, job.company,
+                            JAPAN_OUTPUT_DIR, job.url,
+                        )
+                        job.cover_letter_path = str(cl_txt) if cl_txt else None
+                    else:
+                        console.print(f"  [yellow]Cover letter failed: {job.title[:50]}[/]")
+
+                    job.status = "tailored"
+                    db.upsert_job(job)
+                    success += 1
                 else:
                     console.print(f"  [yellow]Tailor failed: {job.title[:50]}[/]")
             except Exception as e:
@@ -289,7 +316,7 @@ def stage_tailor(score_threshold: int = 7):
             progress.update(task, advance=1)
 
     db.close()
-    console.print(f"[green bold]Tailored {success}/{len(jobs)} resumes[/]")
+    console.print(f"[green bold]Tailored {success}/{len(jobs)} resumes + cover letters[/]")
     return success
 
 

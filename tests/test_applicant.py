@@ -90,10 +90,11 @@ def test_is_eligible_wrong_status(sample_job, sample_profile, tmp_path):
     assert a.is_eligible(sample_job) is False
 
 
-def test_is_eligible_no_cover_letter(sample_job, sample_profile, tmp_path):
+def test_is_eligible_no_cover_letter_still_eligible(sample_job, sample_profile, tmp_path):
+    """Cover letter is optional — jobs should still be eligible without one."""
     sample_job.cover_letter_path = None
     a = Applicant(profile=sample_profile, session_dir=tmp_path / "sessions")
-    assert a.is_eligible(sample_job) is False
+    assert a.is_eligible(sample_job) is True
 
 
 def test_log_result(sample_profile, tmp_path):

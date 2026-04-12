@@ -154,9 +154,9 @@ class TestApplicantConfirmSubmit:
         no_resume = _make_job(resume_path=None)
         assert applicant.is_eligible(no_resume) is False
 
-        # Missing cover letter
+        # Missing cover letter — still eligible (CL is optional)
         no_cl = _make_job(cover_letter_path=None)
-        assert applicant.is_eligible(no_cl) is False
+        assert applicant.is_eligible(no_cl) is True
 
         # Wrong status
         wrong_status = _make_job(status="new")
